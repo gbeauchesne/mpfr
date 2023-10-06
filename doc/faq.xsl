@@ -1,17 +1,13 @@
 <?xml version="1.0"?>
 
 <!DOCTYPE stylesheet [
-<!ENTITY styles SYSTEM "http://www.mpfr.org/styles/visual.css">
+<!ENTITY styles SYSTEM "visual.css">
 <!ENTITY filter "h:div[@class = 'logo' or @class = 'end']">
 ]>
 
 <!--
 XSLT stylesheet to generate the FAQ.html file distributed in MPFR from
-the faq.html file on the MPFR web site. Use the following command:
-wget -q -O - http://www.mpfr.org/faq.html | \
-  xsltproc -''-nodtdattr faq.xsl - | \
-  perl -pe 's,(<(h:)?style.*),<style type="text/css">/*<![CDATA[*/,;
-            s,(</(h:)?style>),/*]]>*/</style>,' > FAQ.html
+the faq.html file on the MPFR web site. See the update-faq script.
 -->
 
 <xsl:stylesheet version="1.0"
@@ -27,7 +23,7 @@ wget -q -O - http://www.mpfr.org/faq.html | \
 <xsl:template match="/">
   <xsl:text>&#10;</xsl:text>
   <xsl:comment>
-Copyright 2000-2018 Free Software Foundation, Inc.
+Copyright 2000-2023 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -44,7 +40,7 @@ License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
+https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA.
 </xsl:comment>
   <xsl:text>&#10;</xsl:text>

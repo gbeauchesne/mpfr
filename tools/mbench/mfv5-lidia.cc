@@ -1,5 +1,5 @@
 /*
-Copyright 2005-2009 Free Software Foundation, Inc.
+Copyright 2005-2022 Free Software Foundation, Inc.
 Contributed by Patrick Pelissier, INRIA.
 
 This file is part of the MPFR Library.
@@ -16,7 +16,7 @@ License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with the MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
+https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
 #include "mfv5.h"
@@ -122,7 +122,7 @@ bool lidia_test<T>::test (const vector<string> &base, const option_test &opt) {
     b = table[i];
     c = table[i+1];
     CALCUL_OVERHEAD ;
-    m = MEASURE(f.func (a, b, c) ); 
+    m = MEASURE(f.func (a, b, c) );
     cont = tim->update (i, m) || cont;
   }
 

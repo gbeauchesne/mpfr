@@ -1,5 +1,5 @@
 /*
-Copyright 2005-2009 Free Software Foundation, Inc.
+Copyright 2005-2022 Free Software Foundation, Inc.
 Contributed by Patrick Pelissier, INRIA.
 
 This file is part of the MPFR Library.
@@ -16,7 +16,7 @@ License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with the MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
+https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
 #include "mfv5.h"
@@ -122,8 +122,8 @@ bool crlibm_test<T>::test (const vector<string> &base, const option_test &opt) {
     table = new double[size];
     mpfr_init2 (x, 530);
     for (i = 0 ; i < size ; i++) {
-      mpfr_set_str (x, base[i].c_str(), 10, GMP_RNDN);
-      table[i] = mpfr_get_d (x, GMP_RNDN);
+      mpfr_set_str (x, base[i].c_str(), 10, MPFR_RNDN);
+      table[i] = mpfr_get_d (x, MPFR_RNDN);
     }
     mpfr_clear (x);
   }
@@ -133,7 +133,7 @@ bool crlibm_test<T>::test (const vector<string> &base, const option_test &opt) {
   for(i = 0 ; i < (size-1) ; i++) {
     b = table[i];
     TIMP_OVERHEAD ();
-    m = TIMP_MEASURE (a = f.func (b) ); 
+    m = TIMP_MEASURE (a = f.func (b) );
     cont = tim->update (i, m) || cont;
   }
 

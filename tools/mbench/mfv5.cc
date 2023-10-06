@@ -1,5 +1,5 @@
 /*
-Copyright 2005-2009 Free Software Foundation, Inc.
+Copyright 2005-2022 Free Software Foundation, Inc.
 Contributed by Patrick Pelissier, INRIA.
 
 This file is part of the MPFR Library.
@@ -16,7 +16,7 @@ License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with the MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
+https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
 #include <mpfr.h>
@@ -27,8 +27,8 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 
 #define USAGE                                                           \
  "Bench functions for Pentium (V5++).\n"                                \
- __FILE__" " __DATE__" " __TIME__" GCC "__VERSION__ "\n"                \
- "Usage: mfv5 [-pPREC] [-sSEED] [-mSIZE] [-iPRIO] [-lLIST] [-xEXPORT_BASE] tests ...\n"
+ __FILE__ " " __DATE__ " " __TIME__ " GCC " __VERSION__ "\n"		\
+ "Usage: mfv5 [-pPREC] [-sSEED] [-mSIZE] [-iPRIO] [-lLIST] [-xEXPORT_BASE] [-XIMPORT_BASE] [-rROUNDING_MODE] [-eEXP] [-dDIFF] tests ...\n"
 
 using namespace std;
 
@@ -81,19 +81,24 @@ build_base (vector<string> &base, const option_test &opt)
 
   for (i = 0 ; i < n ; i++) {
     mpfr_urandomb (x, state);
-    mpfr_mul_2si  (x, x, (rand()%GMP_NUMB_BITS)-(GMP_NUMB_BITS/2), GMP_RNDN);
-    str = mpfr_get_str (NULL, &e, 10, 0, x, GMP_RNDN);
+    if (opt.exp_diff == -1)
+      mpfr_mul_2si  (x, x, (rand() % opt.max_exp) - (opt.max_exp / 2), MPFR_RNDN);
+    else if (opt.exp_diff == -2)
+      mpfr_set_exp (x, opt.max_exp);
+    else /* set the exponent to -i*exp_diff */
+      mpfr_set_exp (x, -(long) i * opt.exp_diff);
+    str = mpfr_get_str (NULL, &e, 10, 0, x, MPFR_RNDN);
     if (str == 0)
       abort ();
     buffer = (char *) malloc (strlen(str)+50);
     if (buffer == 0)
       abort ();
-    sprintf (buffer, "%sE%ld", str, (unsigned long) e-strlen(str)+1);
+    sprintf (buffer, "%sE%ld", str, (long) e - (long) strlen(str));
     if (f)
       fprintf (f, "%s\n", buffer);
     base.push_back (buffer);
     if (opt.verbose)
-      cout << "[" << i << "] = " << buffer << endl;
+      mpfr_printf ("[%lu] = %Re\n", i, x);
     free (buffer);
     mpfr_free_str ((char*)str);
   }
@@ -102,6 +107,20 @@ build_base (vector<string> &base, const option_test &opt)
 
   gmp_randclear(state);
   mpfr_clear (x);
+}
+
+void
+read_base (vector<string> &base, const option_test &opt)
+{
+  unsigned long i, n = opt.stat;
+  std::string x;
+  std::ifstream f(opt.import_base.c_str());
+  std::cout << "Read data from " << opt.import_base << std::endl;
+
+  for (i = 0 ; i < n ; i++) {
+    getline(f, x);
+    base.push_back (x.c_str());
+  }
 }
 
 
@@ -138,12 +157,61 @@ int main (int argc, const char *argv[])
 	    case 'i':
 	      prio = atol (argv[i]+2);
 	      break;
+	    case 'e':
+              options.max_exp = atol (argv[i]+2);
+	      assert (options.max_exp > 0);
+              break;
+	    case 'd':
+              options.exp_diff = atol (argv[i]+2);
+	      assert (options.exp_diff >= -2);
+	      /* exp_diff = -1 (default): exponent is chosen in [-e/2,e/2]
+		 exp_dif >=0: the exponent of the ith value is -i*exp_diff
+		 exp_dif = -2: the exponent is exactly e */
+              break;
+            case 'r':
+              {
+                switch (argv[i][2])
+		  {
+		  case 'n':
+		  case 'N':
+		    options.rnd = MPFR_RNDN;
+		    break;
+		  case 'z':
+		  case 'Z':
+		    options.rnd = MPFR_RNDZ;
+		    break;
+		  case 'u':
+		  case 'U':
+		    options.rnd = MPFR_RNDU;
+		    break;
+		  case 'd':
+		  case 'D':
+		    options.rnd = MPFR_RNDD;
+		    break;
+		  case 'f':
+		  case 'F':
+		    options.rnd = MPFR_RNDF;
+		    break;
+		  case 'a':
+		  case 'A':
+		    options.rnd = MPFR_RNDA;
+		    break;
+		  default:
+		    cerr << "Unknown rounding mode." << endl;
+		    exit(1);
+		    break;
+		  }
+              }
+              break;
 	    case 'l':
 	      list_test ();
 	      exit (0);
 	      break;
 	    case 'x':
 	      options.export_base = (argv[i]+2);
+	      break;
+	    case 'X':
+	      options.import_base = (argv[i]+2);
 	      break;
 	    default:
 	      cerr <<  "Unkwown option:" << argv[i] << endl;
@@ -158,12 +226,20 @@ int main (int argc, const char *argv[])
 
   /* Set low priority */
   setpriority(PRIO_PROCESS, 0, prio);
-  
+
   /* Build Used Base */
   if (options.verbose)
     cout << "Building DATA Base\n";
   mp_set_memory_functions (NULL, NULL, NULL);
-  build_base (base, options);
+
+
+  cout << "GMP VERSION HEADER= " << __GNU_MP_VERSION  << "." << __GNU_MP_VERSION_MINOR << "." << __GNU_MP_VERSION_PATCHLEVEL << " LIB=" << gmp_version << endl;
+  cout << "MPFR VERSION HEADER= " << MPFR_VERSION_STRING << " LIB=" << mpfr_get_version() << endl;
+
+  if (options.import_base != "")
+    read_base (base, options);
+  else
+    build_base (base, options);
 
   /* Do test */
   for (j = 1, cont = 5 ; cont ; j++, cont--) {

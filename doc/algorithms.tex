@@ -1,3 +1,5 @@
+% see https://hal.inria.fr/hal-00934443 to simplify/improve the ulp calculus
+
 \documentclass[12pt]{amsart}
 
 \usepackage{fullpage}
@@ -9,9 +11,40 @@
 \usepackage{graphicx}
 
 \pagestyle{plain}
-\title{The MPFR\footnote{\lowercase{\url{http://www.mpfr.org/}}} Library:
+\title{The MPFR\footnote{\lowercase{\url{https://www.mpfr.org/}}} Library:
 Algorithms and Proofs}
 \author{The MPFR team}
+
+% This fixes some regressions compared to old LaTeX versions (in 2009).
+% For instance, one had in some CMap's (apparently not ToUnicode ones)
+% of the generated PDF file:
+%   <34><34><25b3>
+%   <35><35><25bd>
+% [...]
+%   <14><15><2264>
+%   <30><30><2032>
+%   <31><31><221e>
+%   <64><65><2308>
+%   <6a><6a><007c>
+%   <70><70><221a>
+% Some of the mappings are no longer needed with TeX Live 2020, but
+% at least the following ones are (probably less common symbols).
+% See /usr/share/texlive/texmf-dist/tex/generic/pdftex/glyphtounicode.tex
+% for a full list of ToUnicode mappings. Note that TeX Live 2021 adds all
+% of them, but this triggers Ghostscript bugs:
+%   https://bugs.ghostscript.com/show_bug.cgi?id=704478
+%   https://bugs.ghostscript.com/show_bug.cgi?id=704674
+%   https://bugs.ghostscript.com/show_bug.cgi?id=704681
+%   https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=995392
+\pdfglyphtounicode{prime}{2032}
+\pdfglyphtounicode{lscript}{2113}       % for \ell (or map to 006C)
+\pdfglyphtounicode{ceilingleft}{2308}
+\pdfglyphtounicode{ceilingright}{2309}
+\pdfglyphtounicode{floorleft}{230A}
+\pdfglyphtounicode{floorright}{230B}
+\pdfglyphtounicode{triangle}{25B3}
+\pdfglyphtounicode{triangleinv}{25BD}
+\pdfgentounicode=1
 
 %%%%%%%%%%%%%% macros for the package algorithm2e %%%%%%%%%%%%%%%
 \usepackage[english, lined, linesnumbered]{algorithm2e}
@@ -83,8 +116,8 @@ Algorithms and Proofs}
 
 In the whole document, $\N()$ denotes rounding to nearest,
 $\Z()$ rounding toward zero,
-$\pinf()$ rounding toward plus infinity,
-$\minf()$ rounding toward minus infinity,
+$\pinf()$ rounding toward positive infinity,
+$\minf()$ rounding toward negative infinity,
 and $\circ()$ any of those four rounding modes.
 
 In the whole document, except special notice, all variables are assumed
@@ -92,96 +125,37 @@ to have the same precision, usually denoted $p$.
 
 \section{Error calculus}
 
-Let $n$ --- the working precision ---
+Let $p$ --- the working precision ---
 be a positive integer (considered fixed in the following).
 We write any nonzero real number $x$ in the form $x = m \cdot 2^e$
 with $\frac{1}{2} \le |m| < 1$ and $e := \Exp(x)$, and
-we define $\ulp(x) := 2^{\Exp(x) - n}$.
+we define $\ulp(x) := 2^{\Exp(x) - p}$.
+Any time a number appears in a $\ulp$, it is implicitly assumed to be
+nonzero. Unless specified otherwise, when rounding is involved, one
+also assumes that no underflows nor overflows occur.
 
 \subsection{Ulp calculus}
 
+% TODO: Update the numbers in the labels (and the references).
+% Alternatively, rename the labels to something more meaningful.
+% If one wants to change the order of the rules (which has been done),
+% the numbers in the labels no longer make any sense.
+
 \begin{Rule} \label{R1}
-$2^{-n} |x| < \ulp(x) \le 2^{-n+1} |x|$.
+$2^{-p} |x| < \ulp(x) \le 2^{1-p} |x|$.
 \end{Rule}
 \begin{proof}
 Obvious from $x = m \cdot 2^e$ with $\frac{1}{2} \le |m| < 1$.
 \end{proof}
 
 \begin{Rule} \label{R2}
-If $a$ and $b$ have same precision $n$,
+If $a$ and $b$ have same precision $p$,
 and $|a| \le |b|$, then $\ulp(a) \le \ulp(b)$.
 \end{Rule}
 \begin{proof}
 Write $a = m_a \cdot 2^{e_a}$ and $b = m_b \cdot 2^{e_b}$.
 Then $|a| \le |b|$ implies $e_a \le e_b$, thus
-$\ulp(a) = 2^{e_a-n} \le 2^{e_b-n} = \ulp(b)$.
-\end{proof}
-
-\begin{Rule} \label{R3}
-Let $x$ be a real number, and $y = \circ(x)$.
-Then $|x - y| \leq \frac{1}{2} {\rm min}(\ulp(x), \ulp(y))$
-in rounding to nearest,
-and $|x - y| \leq {\rm min}(\ulp(x), \ulp(y))$ for the other rounding modes.
-\end{Rule}
-\begin{proof}
-First consider rounding to nearest.
-By definition, we have $|x-y| \leq \frac{1}{2} \ulp(y)$.
-If $\ulp(y) \leq \ulp(x)$, then $|x-y| \leq \frac{1}{2} \ulp(y)
-\leq \frac{1}{2} \ulp(x)$.
-The only difficult case is when $\ulp(x) < \ulp(y)$, but then
-necessarily $y$ is a power of two;
-since in that case $y - \frac{1}{2} \ulp(y)$ is exactly representable,
-the maximal possible difference between $x$ and $y$
-is $\frac{1}{4} \ulp(y) = \frac{1}{2} \ulp(x)$, which concludes the proof
-in the rounding to nearest case.
-
-In rounding to zero, we always have $\ulp(y) \leq \ulp(x)$, so the rule
-holds.
-In rounding away from zero, the only difficult case is when
-$\ulp(x) < \ulp(y)$, but then $y$ is a power of two, and since
-$y - \frac{1}{2} \ulp(y)$ is exactly representable,
-the maximal possible difference between $x$ and $y$ is $\frac{1}{2} \ulp(y)
-= \ulp(x)$, which concludes the proof.
-\end{proof}
-
-\begin{Rule} \label{R4}
-$\frac{1}{2} |a| \cdot \ulp(b) < \ulp(a b) < 2 |a| \cdot \ulp(b)$.
-\end{Rule}
-\begin{proof}
-Write $a = m_a 2^{e_a}$, $b = m_b \cdot 2^{e_b}$, and $a b = m 2^e$
-with $\frac{1}{2} \le m_a, m_b, m < 1$,
-then $\frac{1}{4} 2^{e_a+e_b} \le |a b| < 2^{e_a+e_b}$,
-thus $e = e_a + e_b$ or $e = e_a + e_b - 1$, which implies
-$\frac{1}{2} 2^{e_a} \ulp(b) \le \ulp(a b) \le 2^{e_a} \ulp(b)$
-using $2^{e_b-n} = \ulp(b)$, and the rule follows from
-the fact that $|a| < 2^{e_a} \le 2|a|$ (equality on the right side can
-occur only if $e = e_a + e_b$ and $m_a = \frac{1}{2}$, which are
-incompatible).
-\end{proof}
-
-\begin{Rule} \label{R5}
-$\ulp(2^k a) = 2^k \ulp(a)$.
-\end{Rule}
-\begin{proof}
-Easy: if $a = m_a \cdot 2^{e_a}$, then $2^k a = m_a \cdot 2^{e_a+k}$.
-\end{proof}
-
-\begin{Rule} \label{R6}
-Let $x > 0$, $\circ(\cdot)$ be any rounding, and $u := \circ(x)$,
-then $\frac{1}{2} u < x < 2 u$.
-\end{Rule}
-\begin{proof}
-Assume $x \geq 2 u$, then $2u$ is another representable number which is closer
-from $x$ than $u$, which leads to a contradiction. The same argument proves
-$\frac{1}{2} u < x$.
-\end{proof}
-
-\begin{Rule} \label{R7}
-$\frac{1}{2} |a| \cdot \ulp(1) < \ulp(a) \leq |a| \cdot \ulp(1)$.
-\end{Rule}
-\begin{proof}
-The left inequality comes from Rule~\ref{R4} with $b=1$,
-and the right one from $|a| \ulp(1) \geq \frac{1}{2} 2^{e_a} 2^{1-n} =\ulp(a)$.
+$\ulp(a) = 2^{e_a-p} \le 2^{e_b-p} = \ulp(b)$.
 \end{proof}
 
 \begin{Rule} \label{R8}
@@ -190,13 +164,64 @@ we have $\ulp(x) \leq \ulp(\circ(x))$, and equality holds when rounding toward
 zero, toward $-\infty$ for $x>0$, or toward $+\infty$ for $x<0$.
 \end{Rule}
 \begin{proof}
-Without loss of generality, assume $x > 0$.
-Let $x = m \cdot 2^e$ with $\frac{1}{2} \leq m < 1$.
-As $\frac{1}{2} 2^{e_x}$ is a machine number, necessarily $\circ(x) \geq
-\frac{1}{2} 2^{e_x}$, thus by Rule~\ref{R2}, then $\ulp(\circ(x)) \geq
-2^{e_x - n} = \ulp(x)$.
-If we round toward zero, then $\circ(x) \leq x$ and by Rule~\ref{R2} again,
-$\ulp(\circ(x)) \leq \ulp(x)$.
+Without loss of generality, assume $x > 0$. Since $x \in [2^{e-1},2^e[$
+and both $2^{e-1}$ and $2^e$ are exactly representable, one has
+$\circ(x) \in [2^{e-1},2^e]$, and in rounding toward zero,
+$\circ(x) \in [2^{e-1},2^e[$. For any $x, y \in [2^{e-1},2^e[$, one has
+$\ulp(x) = \ulp(y) = \ulp(2^{e-1}) < \ulp(2^e)$. QED.
+\end{proof}
+
+\begin{Rule} \label{R3}
+Let $x$ be a real number, and $y = \circ(x)$.
+Then $|x - y| \leq \frac{1}{2} \ulp(x) \leq \frac{1}{2} \ulp(y)$
+in rounding to nearest,
+and $|x - y| \leq \ulp(x) \leq \ulp(y)$ in the other rounding modes.
+\end{Rule}
+\begin{proof}
+In the binade $[2^{e-1},2^e]$, the distance between two consecutive
+machine numbers is $\ulp(x)$. Hence $|x - y| \leq c \cdot \ulp(x)$
+with $c = \frac{1}{2}$ in rounding to nearest and $c = 1$ in the other
+rounding modes. And $\ulp(x) \leq \ulp(y)$ from Rule~\ref{R8}, which
+completes the proof.
+\end{proof}
+
+\begin{Rule} \label{R4}
+$\ulp(2^k a) = 2^k \ulp(a)$.
+\end{Rule}
+\begin{proof}
+Easy: if $a = m_a \cdot 2^{e_a}$, then $2^k a = m_a \cdot 2^{e_a+k}$.
+\end{proof}
+
+\begin{Rule} \label{R5}
+$\frac{1}{2} |a| \cdot \ulp(b) < \ulp(a b) < 2 |a| \cdot \ulp(b)$.
+\end{Rule}
+\begin{proof}
+Let $e$ be the exponent of $a$, i.e., $2^{e-1} \leq |a| < 2^e$. Then
+$\frac{1}{2} |a| \cdot \ulp(b) < \frac{1}{2} 2^e \cdot \ulp(b) =
+\ulp(2^{e-1} b) \leq \ulp(a b)$.
+The other inequality is actually equivalent: replace $a$ by $\frac{1}{a}$
+and $b$ by $ab$.
+% Note: it is also possible to prove the right inequality directly by
+% taking $2^{k-1} < |a| \leq 2^k$.
+\end{proof}
+
+\begin{Rule} \label{R6}
+Let $x$ be a nonzero real number, $\circ(\cdot)$ be any rounding, and
+$u := \circ(x)$. Then $\frac{1}{2} |u| < |x| < 2 |u|$.
+\end{Rule}
+\begin{proof}
+Since no underflows nor overflows occur, $u$ is finite and nonzero.
+Assume $|x| \geq 2 |u|$. Then $2u$ is another representable number,
+which is closer from $x$ than $u$, which leads to a contradiction.
+The same argument proves $\frac{1}{2} |u| < |x|$.
+\end{proof}
+
+\begin{Rule} \label{R7}
+$\frac{1}{2} |a| \cdot \ulp(1) < \ulp(a) \leq |a| \cdot \ulp(1)$.
+\end{Rule}
+\begin{proof}
+The left inequality comes from Rule~\ref{R5} with $b=1$,
+and the right one from $|a| \ulp(1) \geq \frac{1}{2} 2^{e_a} 2^{1-p} =\ulp(a)$.
 \end{proof}
 
 \begin{Rule} \label{R9}
@@ -295,7 +320,7 @@ w&=&\circ(uv) \\\nonumber
 & \leq & c_w \ulp(w) +  \frac{1}{2} [|u v-u y|+|u y-x y|+|u v-x v|+|x v-x y|]\\\nonumber
 & \leq & c_w \ulp(w) +  \frac{u+x}{2} k_v \ulp(v) + \frac{v+y}{2} k_u \ulp(u)\\\nonumber
 & \leq & c_w \ulp(w) +  \frac{u(1+c_u^+)}{2} k_v \ulp(v) + \frac{v(1+c_v^+)}{2} k_u \ulp(u) \U{R9}\\\nonumber
-& \leq & c_w \ulp(w) +  (1+c_u^+) k_v \ulp(uv) + (1+c_v^+) k_u \ulp(uv) \U{R4}\\\nonumber
+& \leq & c_w \ulp(w) +  (1+c_u^+) k_v \ulp(uv) + (1+c_v^+) k_u \ulp(uv) \U{R5}\\\nonumber
 & \leq & [ c_w +  (1+c_u^+) k_v + (1+c_v^+) k_u ] \ulp(w)\U{R8}\\\nonumber
 \end{eqnarray}
 \begin{eqnarray}\nonumber
@@ -324,7 +349,7 @@ w&=&\circ(\frac{1}{u}) \\\nonumber
 \end{eqnarray}
 \begin{eqnarray}\nonumber
 \error(w)& \leq & c_w \ulp(w) + c_u\frac{k_u}{u^2} \ulp(u)\\\nonumber
-& \leq & c_w \ulp(w) + 2.c_u.k_u \ulp(\frac{u}{u^2}) \U{R4}\\\nonumber
+& \leq & c_w \ulp(w) + 2.c_u.k_u \ulp(\frac{u}{u^2}) \U{R5}\\\nonumber
 & \leq & [c_w + 2.c_u.k_u].\ulp(w) \U{R8}
 \end{eqnarray}
 \begin{eqnarray}\nonumber
@@ -348,7 +373,7 @@ w&=&\circ(\frac{u}{v}) \\\nonumber
 &   =  & c_w \ulp(w) + \frac{k_u}{v}  \ulp(u)+ \frac{k_v x}{vy} \ulp(v)
 \end{eqnarray}
 \begin{eqnarray}\nonumber
-\textnormal{Note:}&& \frac{\ulp(u)}{v} \leq  2 \ulp(\frac{u}{v}) \;\; \U{R4}\\\nonumber
+\textnormal{Note:}&& \frac{\ulp(u)}{v} \leq  2 \ulp(\frac{u}{v}) \;\; \U{R5}\\\nonumber
 && 2 \ulp(\frac{u}{v}) \leq  2 \ulp(w) \;\; \U{R8}
 \end{eqnarray}
 \begin{eqnarray}\nonumber
@@ -359,7 +384,7 @@ w&=&\circ(\frac{u}{v}) \\\nonumber
 \end{eqnarray}
 \begin{eqnarray}\nonumber
 \error(w)& \leq & c_w \ulp(w) + 2.k_u  \ulp(w)+ c_u.c_v.\frac{k_v u}{vv} \ulp(v)\\\nonumber
-& \leq & c_w \ulp(w) + 2.k_u  \ulp(w)+ 2.c_u.c_v.k_v \ulp(\frac{u.v}{v.v}) \U{R4}\\\nonumber
+& \leq & c_w \ulp(w) + 2.k_u  \ulp(w)+ 2.c_u.c_v.k_v \ulp(\frac{u.v}{v.v}) \U{R5}\\\nonumber
 & \leq & [c_w  + 2.k_u+ 2.c_u.c_v.k_v].\ulp(w) \U{R8}
 \end{eqnarray}
 \begin{eqnarray}\nonumber
@@ -396,7 +421,7 @@ it follows $\frac{1}{\sqrt{x}+\sqrt{u}} \leq
 \error(v)& \leq & c_v \ulp(v) +
                  \frac{1}{\sqrt{u}.(1+\sqrt{c_u^-})}  k_u \ulp(u) \\\nonumber
 & \leq & c_v \ulp(v) + \frac{2}{1+\sqrt{c_u^-}}
-       k_u \ulp(\sqrt{u}) \;\; \U{R4}\\\nonumber
+       k_u \ulp(\sqrt{u}) \;\; \U{R5}\\\nonumber
 & \leq & (c_v + \frac{2k_u}{1+\sqrt{c_u^-}})  \ulp(v). \;\; \U{R8}\\\nonumber
 \end{eqnarray}
 If $u$ is less than $x$, we have $c_u^-=1$ and
@@ -419,7 +444,7 @@ v&=&\circ(e^{u}) \\\nonumber
 \end{eqnarray}
 \begin{eqnarray}\nonumber
 \error(v)& \leq & c_v \ulp(v) +  c_u^* e^u k_u \ulp(u) \\\nonumber
-& \leq & c_v \ulp(v) +  2 c_u^* u k_u \ulp(e^u) \;\U{R4}\\\nonumber
+& \leq & c_v \ulp(v) +  2 c_u^* u k_u \ulp(e^u) \;\U{R5}\\\nonumber
 & \leq & (c_v +  2 c_u^* u k_u )\ulp(v) \;\U{R8}\\\nonumber
 & \leq & (c_v +  c_u^* 2^{\Exp(u)+1} k_u )\ulp(v)
 \end{eqnarray}
@@ -456,13 +481,13 @@ $v = m \cdot 2^{e_v}$ with $1/2 \leq |m| < 1$.
 
 The error in ulp (ulp-error) and the relative error are related as follows.
 
-Let $n$ be the working precision.
+Let $p$ be the working precision.
 Consider $u = \circ(x)$, then the error on $u$ is at most
-$\ulp(u) = 2^{\Exp(u)-n} \leq |u| \cdot 2^{1-n}$, thus the relative error
-is $\leq 2^{1-n}$.
+$\ulp(u) = 2^{\Exp(u)-p} \leq |u| \cdot 2^{1-p}$, thus the relative error
+is $\leq 2^{1-p}$.
 
 Respectively, if the relative error is $\leq \delta$, then the error
-is at most $\delta |u| \leq \delta 2^n \ulp(u)$. (Going from the ulp-error
+is at most $\delta |u| \leq \delta 2^p \ulp(u)$. (Going from the ulp-error
 to the relative error and back, we lose a factor of two.)
 
 It is sometimes more convenient to use the relative error instead of the
@@ -473,17 +498,17 @@ Higham \cite{Higham02} proposes the following framework:
 we associate to each variable the cumulated number $k$ of roundings that were
 made.
 The $i$th rounding introduces a relative error of $\delta_i$,
-with $|\delta_i| \leq 2^{1-n}$, i.e. the computed result is
+with $|\delta_i| \leq 2^{1-p}$, i.e. the computed result is
 $1+\delta_i$ times the exact result.
 Hence $k$ successive roundings give a error factor of $(1+\delta_1)
 (1+\delta_2) \cdots (1+\delta_k)$, which is between $(1-\varepsilon)^k$
-and $(1+\varepsilon)^k$ with $\varepsilon = 2^{1-n}$.
+and $(1+\varepsilon)^k$ with $\varepsilon = 2^{1-p}$.
 In particular, if all roundings are away, the final relative error is
-at most $k \varepsilon = k \cdot 2^{1-n}$, thus at most $2k$ ulps.
+at most $k \varepsilon = k \cdot 2^{1-p}$, thus at most $2k$ ulps.
 
 \begin{lemma} \label{rel_ulp}
 If a value is computed by $k$ successive multiplications or divisions,
-each with rounding away from zero, and precision $n$, then the final
+each with rounding away from zero, and precision $p$, then the final
 error is bounded by $2k$ ulps.
 \end{lemma}
 
@@ -960,7 +985,7 @@ which yields $X - \frac{1}{2} \cdot 2^{-n} \leq A^{-1/2} \leq
               X + 1.21 \cdot 2^{-n}$,
 thus the right bound is not a priori fulfilled.
 % (3*1.003*1.311^2+0.5)/8+0.5 <= 1.21
-However the only problematic case is $n=19$, which gives exactly
+However, the only problematic case is $n=19$, which gives exactly
 $(n+3)/2 = 11$, since for $12 \leq n \leq 18$,
 the error terms in $2^{-2h}$ are halved.
 An exhaustive search of all possible inputs for $h=11$ and $n=19$ gives
@@ -972,7 +997,7 @@ Thus as soon as $n \geq 2$, Eq.~(\ref{rec_sqrt_eq1}) is fulfilled.
 
 In summary, Algorithm $\texttt{ApproximateInverseSquareRoot}$ provides an
 approximation $X$ of $A^{-1/2}$ with an error of at most one ulp.
-However if the input $A$ was itself truncated at precision $\geq p$
+However, if the input $A$ was itself truncated at precision $\geq p$
 from an input $A_0$ ---
 for example when the output precision $p$ is less than the input precision ---
 then we have $|X - A^{-1/2}| \leq \ulp(X)$, and
@@ -1094,7 +1119,7 @@ $t = c^2 + \epsilon_2 = \cos^2 x + 4 \epsilon_3$;
 $u = 1 - t - \epsilon_4 = 1 - \cos^2 x - 5 \epsilon_5$;
 $|s| = \sqrt{u} - \epsilon_6 =
 \sqrt{1 - \cos^2 x - 5 \epsilon_5} - \epsilon_6
-\geq |\sin x| - \frac{5 \epsilon_5}{2 |s|} + \epsilon_6$
+\geq \left|\sin x\right| - \frac{5 \epsilon_5}{2 |s|} + \epsilon_6$
 (by Rolle's theorem,
 $|\sqrt{u} - \sqrt{u'}| \le \frac{1}{2 \sqrt{v}} |u-u'|$ for
 $v \in [u, u']$, we apply it here with $u=1 - \cos^2 x - 5 \epsilon_5$,
@@ -1209,6 +1234,19 @@ giving a total complexity of $\O(n^{1/3} M(n))$.
 This is implemented in the function {\tt mpfr\_exp2\_aux2}.
 (Note: the algorithm from Paterson and Stockmeyer was rediscovered by Smith,
 who named it ``concurrent series'' in \cite{Smith91}.)
+
+\subsection{The logarithm function}
+
+The logarithm function \verb!mpfr_log! is defined using this
+approximated formula~\cite{Muller97} based on the arithmetic-geometric
+mean (denoted by AG):
+\[ \log x \approx \frac{\pi}{\mbox{2~AG(1,4/s)}} - m \log 2  + o(\log x ~2^{-p}) \]
+with $s = x \cdot 2^m > 2^{p/2}$.
+
+From the arithmetic-geometric mean, we deduce the logarithm, naively
+bounding the round-off errors. The only point is that the subtraction
+may be a cancellation: a maximum of $\log \left(\frac{p \log
+  2}{|x-1|}\right)$ bits can be lost.
 
 \subsection{The error function}
 
@@ -1367,7 +1405,7 @@ $u$ to $-\infty \;\; (\bullet)$
 
 $(\star\star)$
 
-From inequation \U{R4},
+From inequation \U{R5},
 \[   a \cdot \ulp(b) \leq 2 \cdot \ulp(a \cdot b)\]
 if $a =\frac{1}{u^2},\;b = u$ then
 \[ \frac{1}{u^2} \ulp(u)  \leq 2 \ulp(\frac{1}{u})\]
@@ -1584,7 +1622,7 @@ it is possible with $u=\minf(e^x)$ $(\bullet)$
 
 $(\star\star)$
 
-From inequation \U{R4},
+From inequation \U{R5},
 \[   a \cdot \ulp(b) \leq 2 \cdot \ulp(a \cdot b)\]
 if $a =\frac{1}{u^2},\;b = u$ then
 \[ \frac{1}{u^2} \ulp(u)  \leq 2 \ulp(\frac{1}{u})\]
@@ -1839,37 +1877,47 @@ that $x \geq 0$.
 
 We use Higham's notation, with $\theta_i$ denoting variables such that
 $|\theta_i| \leq 2^{-p}$.
-Firstly, $u$ is exact. Then $v = e^{2x} (1+\theta_1)$ and
+Firstly, $u$ is exact, assuming $x$ is exact with precision $p$.
+Then $v = e^{2x} (1+\theta_1)$ and
 $w = (e^{2x}+1) (1+\theta_2)^2$.
 The error on $r$ is bounded by $\frac{1}{2} \ulp(v) + \frac{1}{2} \ulp(r)$.
-Assume $\ulp(v) = 2^e \ulp(r)$, with $e \geq 0$;
-then the error on $r$ is bounded by $\frac{1}{2} (2^e+1) \ulp(r)$.
-We can thus write $r = (e^{2x}-1) (1+\theta_3)^{2^e+1}$,
-and then $s = \tanh(x) (1+\theta_4)^{2^e+4}$.
+Assume $\ulp(v) = 2^k \ulp(r)$, with $k \geq 0$;
+then the error on $r$ is bounded by $\frac{1}{2} (2^k+1) \ulp(r)$.
+We can thus write $r = (e^{2x}-1) (1+\theta_3)^{2^k+1}$,
+and then $s = \tanh(x) \cdot (1+\theta_4)^{2^k+4}$.
 
 \begin{lemma}
-For $|x| \leq 1/2$, and $|y| \leq |x|^{-1/2}$, we have:
-\[ |(1+x)^y-1| \leq 2 |y| x. \]
+For $0 < x \leq 1/2$ and $0 < y \leq x^{-1/2}$, we have:
+\[ 0 < (1+x)^y - 1 \leq 1.4 \cdot y \cdot x. \]
 \end{lemma}
 \begin{proof}
-We have $(1+x)^y = e^{y \log (1+x)}$,
-with $|y \log (1+x)| \leq |x|^{-1/2} |\log (1+x)|$.
-The function $|x|^{-1/2} \log (1+x)$ is increasing on $[-1/2,1/2]$, and
-takes as values $\approx -0.490$ in $x=-1/2$ and $\approx 0.286$ in $x=1/2$,
-thus is bounded in absolute value by $1/2$.
-This yields $|y \log (1+x)| \leq 1/2$.
-Now it is easy to see that for $|t| \leq 1/2$, we have
-$|e^t-1| \leq 1.3 |t|$.
-Thus $|(1+x)^y-1| \leq 1.3 |y| |\log (1+x)|$.
-The result follows from $|\log (1+x)| \leq 1.4 |x|$ for $|x| \leq 1/2$,
-and $1.3 \times 1.4 \leq 2$.
+We have $(1+x)^y = e^{y \cdot \log(1+x)}$, with
+$0 < y \cdot \log(1+x) \leq x^{-1/2} \cdot \log(1+x)$.
+The function $x^{-1/2} \cdot \log(1+x)$ is increasing on $]0,1/2]$,
+and reaches $\approx 0.573$ for $x = 1/2$.
+Thus $0 < y \cdot \log(1+x) < 0.574$.
+Now it is easy to see that for $0 < t < 0.574$, we have
+$|e^t-1| \leq 1.4\,t$.
+Thus $0 < (1+x)^y - 1 \leq 1.4 \cdot y \cdot \log(1+x)$.
+The result follows from $\log(1+x) \leq x$ for
+$0 < x \leq 1/2$.
 \end{proof}
 
-Applying the above lemma for $x=\theta_4$ and $y=2^e+4$,
-assuming $2^e+4 \leq 2^{p/2}$,
-we get $s = \tanh(x) [1 + 2(2^e+4)\theta_5]$.
-Since $2^e+4 \leq 2^{{\rm max}(3,e+1)}$,
-the relative error on $s$ is thus bounded by $2^{{\rm max}(4,e+2)-p}$.
+First, note that for $t > 0$ and $q \geq 1$, one has
+$|(1-t)^q - 1| \leq |(1+t)^q - 1|$ due to the triangle inequality on the
+development. Thus $|(1+\theta_4)^{2^k+4} - 1| \leq |(1+2^{-p})^{2^k+4} - 1|$.
+Then one can apply the above lemma for $x=2^{-p}$ and $y=2^k+4$,
+assuming $2^k+4 \leq 2^{p/2}$.
+We get $|(1+\theta_4)^{2^k+4} - 1| \leq |(1+2^{-p})^{2^k+4} - 1|
+\leq 1.4 (2^k+4) 2^{-p}$, and thus
+we can write $s = \tanh(x) [1 + 1.4 (2^k+4)\theta_5]$ with
+$|\theta_5| \leq 2^{-p}$.
+Since $2^k+4 \leq 2^{{\rm max}(3,k+1)}$,
+the relative error on $s$ is thus bounded by $2^{{\rm max}(4,k+2)-p}$.
+
+The condition $2^k+4 \leq 2^{p/2}$ is checked in the code with
+${\rm max}(3,k+1) \leq \lfloor p/2 \rfloor$, so that:
+\[2^k+4 \leq 2^{{\rm max}(3,k+1)} \leq 2^{\lfloor p/2 \rfloor} \leq 2^{p/2}.\]
 
 \subsection{The inverse hyperbolic tangent function}
 
@@ -2397,16 +2445,17 @@ When rounding to nearest, if $p_x \leq p_z$ and $\frac{p_z+1}{2} < \Exp(x) -
 p_x$, the condition $\frac{p_x+1}{2} < \Exp(x) - \Exp(y)$ ensures that
 $\frac{y^2}{2x} < \frac{1}{2} \ulp_{p_x}(x)$.  In both cases, these
 inequalities show that $z=\N_{p_z}(x)$, except that tie case is rounded
-toward plus infinity since hypot($x$,$y$) is strictly greater than $x$.
+toward positive infinity since hypot($x$,$y$) is strictly greater than $x$.
 
 With the other rounding modes, the conditions $p_z/2 < \Exp(x) - \Exp(y)$
 if $p_x \leq p_z$, and $p_x/2 < \Exp(x) - \Exp(y)$ if $p_z < p_x$ mean in
 a similar way that $z=\circ_{p_z}(x)$, except that we need to add one ulp
-to the result when rounding toward plus infinity and $x$ is exactly
+to the result when rounding toward positive infinity and $x$ is exactly
 representable with $p_z$ bits of precision.
 
-When none of the above conditions are satisfied and when $\Exp(x) - \Exp(y)
-\leq e_{max} - 2$, we use the following algorithm:
+When none of the above conditions are satisfied, we use the following
+algorithm, whose precision is guaranteed when
+$\Exp(x) - \Exp(y) \leq e_{max} - 1$:
 
 \begin{quote}
   Algorithm {\tt hypot\_1}\\
@@ -2414,10 +2463,10 @@ When none of the above conditions are satisfied and when $\Exp(x) - \Exp(y)
   $p$ the working precision with $p \geq p_z$.\\
   Output: $\sqrt{x^2+y^2}$ with $\left\{
   \begin{array}{l}
-    p-4 \textnormal{ bits of precision if } p <\max(p_x, p_y),\\
-    p-2 \textnormal{ bits of precision if } \max(p_x, p_y) \leq p.
+    p-4 \textnormal{ bits of precision if } p < \max(p_x, p_y),\\
+    p-2 \textnormal{ bits of precision if } p \geq \max(p_x, p_y).
   \end{array}\right.$\\
-  $s \leftarrow \lfloor e_{max}/2\rfloor - \Exp(x) -1$\\
+  $s \leftarrow \lfloor (e_{max}-1)/2 \rfloor - \Exp(x)$\\
   $x_s \leftarrow \Z(x\times 2^s)$\\
   $y_s \leftarrow \Z(y\times 2^s)$\\
   $u \leftarrow \Z(x_s^2)$\\
@@ -2428,26 +2477,32 @@ When none of the above conditions are satisfied and when $\Exp(x) - \Exp(y)
 \end{quote}
 
 In order to avoid undue overflow during computation, we shift inputs'
-exponents by $s = \lfloor\frac{e_{max}}{2}\rfloor -1 -\Exp(x)$ before
+exponents by $s = \lfloor\frac{e_{max}-1}{2}\rfloor - \Exp(x)$ before
 computing squares and shift back the output's exponent by $-s$ using the fact
 that $\sqrt{(x.2^s)^2+(y.2^s)^2}/2^s = \sqrt{x^2+y^2}$. We show below that
-neither overflow nor underflow goes on.
+overflow cannot occur, and underflow cannot occur either when
+$\Exp(x) - \Exp(y) \leq e_{max} - 1$.
 
 We check first that the exponent shift does not cause overflow and, in the
-same time, that the squares of the shifted inputs never overflow. For $x$, we
-have $\Exp(x) + s = \lfloor e_{max}/2\rfloor - 1$, so $\Exp(x_s^2) < e_{max} -
-1$ and neither $x_s$ nor $x_s^2$ overflows. For $y$, note that we have $y_s
-\leq x_s$ because $y \leq x$, thus $y_s$ and $y_s^2$ do not overflow.
+same time, that the squares of the shifted inputs never overflow.
+For $x$, we have $\Exp(x) + s = \lfloor (e_{max}-1)/2 \rfloor$, so
+$\Exp(x_s^2) \leq e_{max} - 1$ and neither $x_s$ nor $x_s^2$ overflows.
+Therefore we have: $\Z(x_s^2) \leq x_s^2 < 2^{e_{max} - 1}$.
+For $y$, note that we have $y_s \leq x_s$ because $y \leq x$, thus $y_s$
+and $y_s^2$ do not overflow.
 
 Secondly, let us see that the exponent shift does not cause underflow. For
 $x$, we know that $0 \leq \Exp(x) + s$, thus neither $x_s$ nor $x_s^2$
-underflows. For $y$, the condition $\Exp(x) - \Exp(y) \leq e_{max} - 2$
-ensures that $-e_{max}/2 \leq \Exp(y) + s$ which shows that $y_s$ and its
-square do not underflow.
+underflows. For $y$, the condition $\Exp(x) - \Exp(y) \leq e_{max} - 1$
+implies that $\lfloor(e_{max}-1)/2\rfloor - s - \Exp(y) \leq e_{max} - 1$,
+and since $e_{max}/2-1 \leq \lfloor(e_{max}-1)/2\rfloor$, we deduce
+$e_{min}/2 = -e_{max}/2 \leq \Exp(y) + s$, which shows that $y_s$ and
+its square do not underflow (even when taking the rounding into account
+since the scaling is exact).
 
 Thirdly, the addition does not overflow because $u + v < 2 x_s^2$ and it was
-shown above that $x_s^2 < 2^{e_{max} - 1}$. It cannot underflow because both
-operands are positive.
+shown above that $\Z(x_s^2) < 2^{e_{max} - 1}$. It cannot underflow because
+both operands are positive.
 
 Fourthly, as $x_s < t$, the square root does not underflow. Due to the
 exponent shift, we have $1 \leq x_s$, then $w$ is greater than 1 and thus
@@ -2861,7 +2916,7 @@ $v \leftarrow \pinf(y \times u) $
 \begin{minipage}{6cm}
 ($\star$)
 
-with \U{R4}
+with \U{R5}
 
 ($\star$)
 
@@ -2891,7 +2946,7 @@ with $c_u^* = 1$ for $(\bullet)$
 
 
 That shows the rounding error on the calculation of $x^y$
-can be bound by $1 + 3 \cdot 2^{\Exp(v)+1}$ ulps on the result. So,
+can be bounded by $1 + 3 \cdot 2^{\Exp(v)+1}$ ulps on the result. So,
 to calculate the size of intermediary variables, we have to add, at
 least, $\lceil \log_2 (1+3 \cdot 2^{\Exp(v)+1}) \rceil$ bits to the wanted
 precision.
@@ -3032,8 +3087,8 @@ $\sum_{k=1}^{\infty} \frac{x^k}{k \, k!}$, using working precision $w$.
 For any real $v$, we denote by ${\rm trunc}(v)$ the nearest integer
 toward zero.
 \begin{quote}
-Decompose $x$ into  $m\cdot2^e$ with $m$ integer [exact] \\
-If necessary, truncate $m$ to $w$ bits and adjust $e$ \\
+Approximate $x$ by  $m\cdot2^e$ with $m$ an integer \\
+having exactly $w$ bits, such that $|x - m\cdot2^e| \leq 2^e$ \\
 $s \leftarrow 0$ \\ % sum
 $t \leftarrow 2^w$ \\ % current term x^k/k!
 for $k := 1$ do \\
@@ -3051,7 +3106,7 @@ Let $\epsilon_k$ be the absolute difference between $t$ and
 $2^w x^k/k!$ at step $k$.
 We have $\epsilon_0=0$, and $\epsilon_k \leq 1 + \epsilon_{k-1} m 2^e/k
 + t_{k-1} m 2^{e+1-w}/k$, since the error when approximating $x$ by
-$m 2^e$ is less than $m 2^{e+1-w}$.
+$m 2^e$ is less than $2^e \leq m 2^{e+1-w}$.
 Similarly, the absolute error on $u$ at step $k$ is at most
 $\nu_k \leq 1 + \epsilon_k/k$,
 and that on $s$ at most $\tau_k \leq \tau_{k-1} + \nu_k$.
@@ -3062,6 +3117,8 @@ on the error on $s$ made so far.
 At that time, the truncation error when neglecting terms of index $k+1$
 to $\infty$ can be bounded by $(|t| + \epsilon_k)/k (|x|/k + |x|^2/k^2 +
 \cdots) \leq (|t| + \epsilon_k) |x|/k/(k-|x|)$.
+
+\bigskip
 
 \paragraph{Asymptotic Expansion}
 
@@ -3074,6 +3131,14 @@ $k \approx x$, and is of the order of $e^{-x}$. Thus assuming the error
 term is bounded by the first neglected term, we can use that expansion
 as long as $e^{-x} \leq 2^{-p}$ where $p$ is the target precision,
 i.e.~when $x \geq p \log 2$.
+
+\bigskip
+
+For $x < 0$, the function \verb|mpfr_eint| returns the value of 
+$E_1(-x)$, defined by \cite[formula 5.1.11]{AbSt73}:
+\[ E_1(x) = -\gamma - \log(x) - \sum_{k=1}^{\infty} \frac{(-x)^k}{k \, k!}.\]
+We use the very same algorithm and error analysis as above (including the
+asymptotic expansion).
 
 \subsection{The gamma function}
 
@@ -3091,16 +3156,155 @@ According to \cite[Section 2.6]{Pugh04}, the relative error is bounded by
 $a^{-1/2} (2\pi)^{-a-1/2}$ for $a \ge 3$ and $\Re(z) \ge 0$.
 See also \cite{Smith01}.
 
+\subsection{The incomplete gamma function}
+
+The incomplete gamma function is defined for $x \geq 0$ as
+(it can be defined by continuity for $a$ being zero or a negative integer):
+\[ \Gamma(a,x) = \int_x^{\infty} t^{a-1} \exp(-t) \, {\rm d}t
+               = \Gamma(a) - \gamma(a,x), \]
+with the complementary incomplete gamma function $\gamma(a,x)$ defined by:
+\[ \gamma(a,x) = \int_0^x t^{a-1} \exp(-t) \, {\rm d}t, \]
+satisfying the two Taylor expansions \cite[formula 6.5.29]{AbSt73}:
+\[
+\gamma(a,x) = x^a \sum_{k=0}^{\infty} \frac{(-x)^k}{(a+k) k!}
+            = x^a \exp(-x) \sum_{k=0}^{\infty} \frac{x^k}{a (a+1) \cdots
+                  (a+k)}.
+\]
+We use the second expansion, and we stop adding terms of the series when the
+current term is less than one ulp of the current sum, and $|x/(a+k)| < 1/2$.
+The last condition ensures that the tail of the series is less than twice the
+current term, thus the approximated sum $s$ satisfies $s = S (1 + \theta)^3$
+with $S$ the exact sum, and $|\theta| < 2^{-w}$ with $w$ the working
+precision. If the series was computed up to index $k$, the error on
+$\gamma(a,x)$ is less than $4k+14$ ulps.
+Subtracting from $\Gamma(a)$ can yield a huge cancellation: we take into
+account the exact error bound, which is deduced from the different exponents
+involved. Further details can be found in the source code.
+
+For negative integers $a$ we use the following formula
+\cite[formula 6.5.19]{AbSt73}:
+\[ \Gamma(-n,x) = \frac{(-1)^n}{n!} [E_1(x) - e^{-x}
+   \sum_{j=0}^{n-1} \frac{(-1)^j \, j!}{x^{j+1}}]. \]
+
+\subsubsection{Legendre's continued fraction}
+
+% see also "Effective Laguerre asymptotics" by Borwein, Borwein and Crandall
+% https://carma.newcastle.edu.au/jon/Laguerre.pdf (in connection with [47])
+% [47] S. Winitzki, Computing the incomplete gamma function to arbitrary
+% precision, LNCS 2667, 290, Springer–Verlag (2003).
+
+In \cite{Gautschi79}, Gautschi discusses the computation of $\Gamma(a,x)$
+with Legendre's continued fraction:
+\[ x^{-a} e^x \Gamma(a,x) = \frac{1}{x+} \frac{1-a}{1+} \frac{1}{x+}
+   \frac{2-a}{x+} \frac{2}{x+} \cdots \]
+where by contracting two consecutive terms we get:
+\begin{equation} \label{eq:legendre_cf}
+x^{-a} e^x \Gamma(a,x) = \sum_{k=0}^{\infty} t_k,
+\end{equation}
+with $t_k = \rho_0 \rho_1 \cdots \rho_k$,
+$\rho_0 = 1$, $\sigma_0 = 1$, and for $k \geq 1$,
+$\rho_k = -a_k \sigma_{k-1} / (1 + a_k \sigma_{k-1})$,
+$\sigma_k = 1 / (1 + a_k \sigma_{k-1})$, and:
+\[ a_k = \frac{k (a-k)}{(x + 2k - 1 - a) (x + 2k + 1 - a)}. \]
+Gautschi proves that when  $x \geq 1/4$ and $a \leq x + 1/4$, then
+$|\rho_k| \leq 1$ for all $k \geq 1$. However, this is not enough to bound
+the tail of the above series.
+
+We consider here the case where $a \leq -1$, thus $a_k \leq 0$
+(remember $\Gamma(a,x)$ is only defined for $x \geq 0$).
+When $k$ goes to infinity, $a_k = -1/4 + x/(4k) + O(1/k^2)$.
+We prove that for $k \geq 2 \, {\rm max}(x,|a|)$, we have
+$a_k \geq -1/4 + x/(8k)$. Indeed,
+\[ a_k + \frac{1}{4} - \frac{x}{8k} = 
+% ak:=k*(a-k)/(x+2*k-1-a)/(x+2*k+1-a);
+% e:=normal(ak+1/4-x/8/k);
+% num:=numer(e); den:=denom(e);
+% num2:=x*(4*k^2-2*k*x-x^2+2*x*a+1-a^2)+2*k*(a^2-1);
+   \frac{x(4k^2-2kx+2xa-x^2-a^2+1)+2k(a^2-1)}{8k(x+2k-1-a)(x + 2 k + 1 - a)}. \]
+The denominator is positive for $k \geq 1$ as long as $x-a+1 > 0$,
+which holds since we assumed $a \leq -1$.
+The second term $2k(a^2-1)$ in the numerator is non-negative since $a \leq -1$;
+the factor of $x$ in the first term satisfies since $k \geq x$:
+\[ 4k^2-2kx+2xa-x^2-a^2+1 \geq
+   4k^2-2kx-2k|a|-x^2-a^2+1. \]
+Since the right-hand side is symmetric in $x$ and $|a|$, we can assume
+without loss of generality that $x \geq |a|$.
+Then $4k^2-2kx+2xa-x^2-a^2+1 \geq 4k^2-4kx-2x^2+1
+= (2k-x)^2 -3x^2 + 1$, which is positive when $k \geq 2x$.
+
+Since $a_k \geq -1/4 + x/(8k)$, we have $-1/4 \leq a_k \leq 0$, and
+since $\sigma_k = 1/(1 + a_k \sigma_{k-1})$ with $\sigma_0 = 1$,
+it follows by induction that $1 \leq \sigma_k \leq 2$ for all $k \geq 0$.
+It yields for $a \leq -1$ and $k \geq 2 \, {\rm max}(x,|a|)$:
+\[ \rho_k = \frac{-a_k \sigma_{k-1}}{1 + a_k \sigma_{k-1}} 
+   \leq -4 a_k \leq 1 - x/(2k). \]
+
+Assume now that we stop the series computation in Eq.~(\ref{eq:legendre_cf})
+after $t_k$. The neglected part is:
+\[ t_k (\rho_{k+1} + \rho_{k+1} \rho_{k+2} + \rho_{k+1} \rho_{k+2} \rho_{k+3}
+   + \cdots). \]
+Let $u_{k,\ell} := \rho_{k} \rho_{k+1} \cdots \rho_{\ell}$.
+Since $\rho_j \leq 1 - x/(2j)$ and $\log(1-u) \leq -u$ for $0 < u < 1$:
+\[ \log u_{k,\ell} = \sum_{j=k}^{\ell} \log \rho_j
+   \leq \sum_{j=k}^{\ell} \log (1-\frac{x}{2j})
+   \leq -x \sum_{j=k}^{\ell} \frac{1}{2j}
+   = -\frac{x}{2} (\psi(\ell+1) - \psi(k+1)). \]
+Using $\log(t-1) \leq \psi(t) \leq \log t$ yields:
+\[ \log u_{k,\ell} \leq \frac{x}{2} (\log(k+1) - \log(\ell)). \]
+Now since $\rho_k < 1$:
+\[ \rho_k + \rho_k \rho_{k+1} + \rho_k \rho_{k+1} \rho_{k+2} + \cdots
+   \leq 1 + \sum_{\ell=k+1}^{\infty} u_{k,\ell}
+   \leq 1 + \sum_{j=1}^{\infty} \exp(\frac{x}{2} \log\frac{k+1}{k+j}). \]
+We split the sum into blocks of $k+1$ consecutive terms:
+\begin{eqnarray*}
+\sum_{\ell=k+1}^{\infty} u_{k,\ell}
+   &\leq& \sum_{j=1}^{\infty} \left( \frac{k+1}{k+j} \right)^{x/2} \\
+   &\leq& (k+1) \left( \frac{k+1}{k+1} \right)^{x/2}
+   + (k+1) \left( \frac{k+1}{2k+2} \right)^{x/2}
+   + (k+1) \left( \frac{k+1}{3k+3} \right)^{x/2} + \cdots \\
+   &\leq& (k+1) (1 + (1/2)^{x/2} + (1/3)^{x/2} + \cdots) = (k+1) \zeta(x/2).
+\end{eqnarray*}
+
+\begin{lemma}
+Assume $a \leq -1$,
+and we stop the series computation in Eq.~(\ref{eq:legendre_cf})
+after $t_k$, with $k \geq 2 \, {\rm max}(x,|a|)$.
+Then the error on the sum of the right hand side
+of Eq.~(\ref{eq:legendre_cf}) is bounded by
+\[ t_k (1 + (k+1) \zeta(x/2)). \]
+\end{lemma}
+
 \subsection{The Riemann Zeta function}
 
-The algorithm for the Riemann Zeta function is due to Jean-Luc R\'emy
-and Sapphorain P\'etermann \cite{PeRe06,PeRe07}. For $s < 1/2$ we use the
-functional equation
-\[ \zeta(s) = 2^s \pi^{s-1} \sin\left(\frac{\pi s}{2}\right) \Gamma(1-s)
-   \zeta(1-s) \]
-(in that case, one should take care of cancellation when $\sin(\pi s/2)$ is
-small, i.e., when $s$ is near an even negative integer).
-For $s \geq 1/2$ we use the Euler-MacLaurin summation formula, applied
+\subsubsection{Special cases}
+
+As usual, special inputs are first taken into account: NaN, infinities,
+zeros, but also values close enough to $0$ (see below), even negative
+integers, and $1$ (pole).
+
+Let us focus on $\zeta(s)$, where $s$ has a small exponent.
+In theory, this case could be handled by the reflection formula
+(\textsection\ref{zeta:reflection}), but as the term $\zeta(1-s)$
+of this formula is close to the pole of $\zeta$ at $1$, this method would
+be slow (and could even yield an internal overflow for tiny $s$), while
+the correctly rounded result can be determined very quickly when $s$ is
+close enough to $0$. We have around $0$:
+\[ \zeta(s) = -\frac{1}{2} - \frac{1}{2} \log(2 \pi) s + \ldots \]
+and for $|s| \leq 2^{-4}$, we have $|\zeta(s) + 1/2| \leq |s|$. Thus
+if $|s| \leq 2^{-4}$ and $|s| \leq \frac{1}{4} \ulp(1/2)$ in the target
+precision $p$, we can deduce the correct rounding for any rounding mode.
+The second condition can be rewritten: $|s| \leq 2^{-2-p}$. For $p \geq 2$,
+the second condition implies the first one, and it is sufficient to have
+$\Exp(s) \leq -2-p$. For $p = 1$, if we assume $\Exp(s) \leq -2-p$, then
+$|s| \leq \frac{1}{2} 2^{-2-p} = 2^{-4}$, so that both conditions are
+also satisfied. Thus, for any target precision $p \geq 1$, a sufficient
+condition is $\Exp(s) \leq -2-p$, or equivalently $\Exp(s) + 1 < -p$.
+
+\subsubsection{Case $s \geq 1/2$}
+
+The algorithm for the Riemann Zeta function for $s \geq 1/2$ is due to
+Jean-Luc R\'emy and Sapphorain P\'etermann \cite{PeRe06,PeRe07}.
+We use the Euler-MacLaurin summation formula, applied
 to the real function $f(x) = x^{-s}$ for $s > 1$:
 \[ \zeta(s) = \sum_{k=1}^{N-1} \frac{1}{k^s} + \frac{1}{2N^s}
 + \frac{1}{(s-1)N^{s-1}} + \sum_{k=1}^p \frac{B_{2k}}{2k}
@@ -3132,7 +3336,52 @@ the approximation computed, we have
 \[ |\zeta(s) - z| \leq 2^{-\Pi} |\zeta(s)|. \]
 \end{theorem}
 
-\subsubsection{The integer argument case.}
+\subsubsection{Case $s < 1/2$}
+\label{zeta:reflection}
+
+For $s < 1/2$, we use the reflection formula:
+\[ \zeta(s) = 2^s \pi^{s-1} \sin\left(\frac{\pi s}{2}\right) \Gamma(1-s)
+   \zeta(1-s). \]
+
+For simplicity, to avoid taking into account the error from the
+$\Gamma$ and $\zeta$ inputs, we will ensure that $1-s$ is represented
+exactly. Thus its precision may need to be much larger than the target
+precision. However, for efficiency reasons, the internal working
+precision $q$ will still be based only on the target precision as usual.
+
+So, assuming that no underflows nor overflows occur, the terms
+$\Gamma(1-s)$ and $\zeta(1-s)$ will each have an error factor of
+the form $1+\theta$, with $|\theta| \leq 2^{-q}$.
+
+Assuming that $\Gamma$ and $\zeta$ have a larger complexity than
+the other terms, we would like the other error factors not to be
+significantly larger than $1+2^{-q}$. Otherwise we would have wasted
+time by computing $\Gamma(1-s)$ and $\zeta(1-s)$ with more precision
+than really needed.
+
+Concerning the term $\pi^{s-1}$, if the constant $\pi$ is represented
+by a variable $x$ with a precision $p_x$ to the nearest, then
+$(1-2^{-p_x}) x \leq \pi \leq (1+2^{-p_x}) x$. So,
+\[ (1+2^{-p_x})^{s-1} x^{s-1} \leq \pi^{s-1} \leq
+   (1-2^{-p_x})^{s-1} x^{s-1}, \]
+i.e.,
+\[ (1-2^{-p_x})^{1-s} \pi^{s-1} \leq x^{s-1} \leq
+   (1+2^{-p_x})^{1-s} \pi^{s-1}. \]
+We want $(1-s) 2^{-p_x}$ to be small and of the order of $2^{-q}$.
+We will choose $p_x = q - \Exp(1-s)$, so that $(1-s) 2^{-p_x} < 2^{-q}$.
+The value $x^{s-1}$ will be computed and rounded to the working precision
+by the \texttt{mpfr\_pow} function, giving another error term of the form
+$1+\theta$, with $|\theta| \leq 2^{-q}$.
+
+Concerning the term $\sin\left(\frac{\pi s}{2}\right)$, because of the
+factor $\pi$ in the argument, we will do the range reduction ourselves:
+it will much simpler and faster than the one in \texttt{mpfr\_sin}, and
+this will allow us to select the intermediate precision more accurately.
+
+% To be removed when complete and correctly implemented.
+(WORK IN PROGRESS -- May not correspond to the implementation yet.)
+
+\subsubsection{The integer argument case}
 In case of an integer argument $s \geq 2$,
 the \texttt{mpfr\_zeta\_ui} function computes
 $\zeta(s)$ using the following formula from \cite{Borwein95}:
@@ -3386,6 +3635,8 @@ is an exponent loss in the final subtraction $r = \circ(v_{n+1}-w)$.
 
 \subsection{The Bessel functions}
 
+% see https://people.eecs.berkeley.edu/~fateman/papers/hermite.pdf
+
 \subsubsection{Bessel function $J_n(z)$ of first kind}
 
 The Bessel function $J_n(z)$ of first kind and integer order $n$
@@ -3465,7 +3716,7 @@ diverging series:
 % (2*z)^(2*k+1),k=0..4) end:
 % J:=proc(n,z) sqrt(2/Pi/z)*(P(n,z)*cos(z-(n/2+1/4)*Pi)-Q(n,z)*
 % sin(z-(n/2+1/4)*Pi)) end:
-If $n$ is real and non-negative --- which is the case here ---,
+If $n$ is real and nonnegative --- which is the case here ---,
 the remainder of $P(n,z)$ after $k$ terms does not exceed the $(k+1)$th term
 and is of the same sign, provided $k > n/2 - 1/4$; the same holds for
 $Q(n,z)$ as long as $k > n/2 - 3/4$ \cite[9.2.10]{AbSt73}.
@@ -3639,7 +3890,7 @@ only the real part for $x$ real, $x \geq 1$.
 When $x \in ]0, \frac{1}{2}]$, we use the series 
 (see \cite[Eq. (5)]{VoWe05}):
 \[
-\Li2(x) = \sum_{n=0}^\infty \frac{B_n}{(n+1)!} (-\log(1-x))^{n+1}
+\Li2(x) = \sum_{n=0}^{\infty} \frac{B_n}{(n+1)!} (-\log(1-x))^{n+1}
 \]
 where $B_n$ is the $n$-th Bernoulli number.
 
@@ -3670,7 +3921,7 @@ Assume first $0 < x \leq \frac{1}{2}$, the odd Bernoulli numbers being zero
 \]
 where  
 \[
-S(z) = \sum_{k=0}^\infty \frac{B_{2k}}{(2k+1)!} z^{2k+1}.
+S(z) = \sum_{k=0}^{\infty} \frac{B_{2k}}{(2k+1)!} z^{2k+1}.
 \]
 Let $S_N(z) = \sum_{k \leq N} \frac{B_{2k}}{(2k+1)!} z^{2k+1}$ the $N$-th
 partial sum, and $R_N(z)$ the truncation error.
@@ -4083,7 +4334,7 @@ where
 \subsection{The Digamma Function}
 
 The Digamma function \texttt{mpfr\_digamma} is defined by:
-\[ \psi(x) = \frac{d}{dx} \log\Gamma(x), \]
+\[ \psi(x) = \frac{d}{{\mathrm d}x} \log\Gamma(x), \]
 and is computed from the asymptotic series \cite{Smith01}
 \[ \psi(x) \sim \log x - \frac{1}{2x} - \sum_{n=1}^{\infty}
    \frac{B_{2n}}{2n x^{2n}}. \]
@@ -4290,10 +4541,14 @@ $$  \wprec = \precc + 1 + 4 + \lceil \log_2(4\kvar)\rceil + \cond - \Exp(\svar).
 
 The \texttt{mpfr\_get\_str} function with size $0$ and base $b$ chooses an
 output precision of $1 + \lceil e \log(2)/\log(b) \rceil$ for a precision
-of $e$ bits.
-However the code uses instead $1 + \lceil e y \rceil$, where $y$ is
+of $e$ bits if $b$ is not a power of two \cite{Mat68}.
+However, the code uses instead $1 + \lceil e y \rceil$, where $y$ is
 an upper $76$-bit approximation of $\log(2)/\log(b)$. When do both values
 differ?
+In the case $b=2^k$, the worst case is when the first output digit contains
+only one significant bit, thus
+$1 + \lceil (e-1) \log(2)/\log(b) \rceil$ digits are necessary, and also
+sufficient.
 
 Let $y$ be the $76$-bit upper approximation of $x=\log(2)/\log(b)$.
 Both values differ when there is an integer $n$ such that
@@ -4406,7 +4661,7 @@ thus $\err(w)/\ulp(w) \le c_w + {\rm max}(k_u + k_v/2, k_u/2 + k_v)
 
 \subsection{The constant $\pi$}
 
-The computation of $\pi$ uses the AGM formula
+The computation of $\pi$ uses the Brent-Salamin formula
 \[ \pi = \frac{\mu^2}{D}, \]
 where $\mu = {\rm AGM}(\frac{1}{\sqrt{2}}, 1)$ is the common limit
 of the sequences $a_0=1, b_0 = \frac{1}{\sqrt{2}},
@@ -4414,7 +4669,8 @@ a_{k+1} = (a_k+b_k)/2, b_{k+1} = \sqrt{a_k b_k}$,
 $D=\frac{1}{4} - \sum_{k=1}^{\infty} 2^{k-1} (a_k^2-b_k^2)$.
 This formula can be evaluated efficiently as shown in \cite{ScGrVe94},
 starting from $a_0 = A_0 = 1, B_0 = 1/2, D_0 = 1/4$, where $A_k$ and
-$B_k$ represent respectively $a_k^2$ and $b_k^2$:
+$B_k$ represent respectively $a_k^2$ and $b_k^2$
+(see \cite{bertot:hal-01582524} for a formal proof of the error analysis):
 \begin{quote}
 $S_{k+1} \leftarrow (A_k + B_k)/4$ \\
 $b_k \leftarrow \sqrt{B_k}$ \\
@@ -4449,10 +4705,13 @@ $|\epsilon''| \leq 2 \epsilon + \epsilon' \leq (26 + 2^{k+7}) 2^{k-p}
 
 \subsection{Euler's constant} \label{gamma}
 
+% see the talk "Ramanujan and Euler's constant" by Richard Brent on July 8,
+% 2010 at https://maths-people.anu.edu.au/~brent/talks.html
+
 Euler's constant is computed using the formula $\gamma = S(n) - R(n) - \log n$
 where:
 \[ S(n) = \sum_{k=1}^{\infty} \frac{n^k (-1)^{k-1}}{k! k}, \quad
-   R(n) = \int_n^{\infty} \frac{\exp(-u)}{u} du \sim \frac{\exp(-n)}{n}
+   R(n) = \int_n^{\infty} \frac{\exp(-u)}{u} {\mathrm d}u \sim \frac{\exp(-n)}{n}
         \sum_{k=0}^{\infty} \frac{k!}{(-n)^k}. \]
 This identity is attributed to Sweeney by Brent \cite{Brent78}.
 (See also \cite{Smith01}.)
@@ -4525,7 +4784,7 @@ as in \cite{Brent78}:
 % and $n^{n-1}$ within at most $n-2$ ulps.
 % The division by $n^{n-1}$ and the multiplication introduce one more ulp of
 % error, thus the total error on $R'(n)$ is at most $n+2$ ulps.
-Let us introduce $I_k = \int_n^{\infty} \frac{e^{-u}}{u^k} du$.
+Let us introduce $I_k = \int_n^{\infty} \frac{e^{-u}}{u^k} {\mathrm d}u$.
 We have $R(n) = I_1$ and the recurrence $I_k = \frac{e^{-n}}{n^k} - k I_{k+1}$,
 which gives
 \[ R(n) = \frac{e^{-n}}{n} \sum_{k=0}^{n-2} \frac{k!}{(-n)^k}
@@ -4539,7 +4798,7 @@ $e^t < 1+2t$ for $0 < t < 1$, thus
 $(x!)^2 \le 2\pi x^{2x} e^{-2x} (x+\frac{1}{3})$.}
 for $n \ge 1$, we have:
 \[ |R(n) - R'(n)| = (n-1)! I_n
-        \le \frac{n!}{n} \int_n^{\infty} \frac{e^{-n}}{u^n} du
+        \le \frac{n!}{n} \int_n^{\infty} \frac{e^{-n}}{u^n} {\mathrm d}u
         \le \frac{n^{n-1}}{e^n} \sqrt{2 \pi (n+1)} \frac{e^{-n}}{(n-1)
         n^{n-1}} \]
 and since $\sqrt{2 \pi (n+1)}/(n-1) \le 1$ for $n \ge 9$:
@@ -4586,16 +4845,16 @@ $\gamma = S(n) - R(n) - \log n$ with $n$ such that $e^{-2n} \le
 \ulp(1/2) = 2^{-{\rm prec}}$, i.e.\ $n \ge {\rm prec} \frac{\log 2}{2}$:
 \begin{quote}
 $s \leftarrow S'(n)$ \\
-$l \leftarrow \log(n)$ \\
+$\ell \leftarrow \log(n)$ \\
 $r \leftarrow R'(n)$ \\
-return $(s - l) - r$
+return $(s - \ell) - r$
 \end{quote}
 Since the final result is in $[\frac{1}{2}, 1]$, and $R'(n) \le
 \frac{e^{-n}}{n}$, then $S'(n)$ approximates $\log n$.
 If the target precision is $m$, and
-we use $m + \lceil \log_2({\rm prec}) \rceil$ bits to evaluate $s$ and $l$,
-then the error on $s-l$ will be at most $3 \ulp(1/2)$,
-so the error on $(s - l) - r$ is at most $5 \ulp(1/2)$,
+we use $m + \lceil \log_2({\rm prec}) \rceil$ bits to evaluate $s$ and $\ell$,
+then the error on $s-\ell$ will be at most $3 \ulp(1/2)$,
+so the error on $(s - \ell) - r$ is at most $5 \ulp(1/2)$,
 and adding the $3 e^{-2n}$ truncation error, we get a bound of
 $8 \ulp(1/2)$.
 [\textbf{FIXME: check with new method to compute S}]
@@ -4682,7 +4941,7 @@ Catalan's constant is defined by
 \[ G = \sum_{k=0}^{\infty} \frac{(-1)^k}{(2k+1)^2}. \]
 We compute it using formula (31) of Victor Adamchik's document
 ``33 representations for Catalan's constant''\footnote{
-\url{http://www-2.cs.cmu.edu/~adamchik/articles/catalan/catalan.htm}}:
+\url{https://web.archive.org/web/20090624123133/http://www-2.cs.cmu.edu/~adamchik/articles/catalan/catalan.htm}}:
 \[ G = \frac{\pi}{8} \log(2 + \sqrt{3}) + \frac{3}{8}
   \sum_{k=0}^{\infty} \frac{(k!)^2}{(2k)! (2k+1)^2}. \]
 Let $f(k) = \frac{(k!)^2}{(2k)! (2k+1)^2}$, and

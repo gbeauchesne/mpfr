@@ -1,6 +1,6 @@
 /* mpfr_frexp -- convert to integral and fractional parts
 
-Copyright 2011-2018 Free Software Foundation, Inc.
+Copyright 2011-2023 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -17,7 +17,7 @@ License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
+https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
 #include "mpfr-impl.h"
@@ -26,12 +26,12 @@ int
 mpfr_frexp (mpfr_exp_t *exp, mpfr_ptr y, mpfr_srcptr x, mpfr_rnd_t rnd)
 {
   int inex;
-  unsigned int saved_flags = __gmpfr_flags;
+  mpfr_flags_t saved_flags = __gmpfr_flags;
   MPFR_BLOCK_DECL (flags);
 
   MPFR_LOG_FUNC
-    (("x[%Pu]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd),
-     ("y[%Pu]=%.*Rg exp=%" MPFR_EXP_FSPEC "d inex=%d", mpfr_get_prec (y),
+    (("x[%Pd]=%.*Rg rnd=%d", mpfr_get_prec (x), mpfr_log_prec, x, rnd),
+     ("y[%Pd]=%.*Rg exp=%" MPFR_EXP_FSPEC "d inex=%d", mpfr_get_prec (y),
       mpfr_log_prec, y, (mpfr_eexp_t) *exp, inex));
 
   if (MPFR_UNLIKELY(MPFR_IS_SINGULAR(x)))

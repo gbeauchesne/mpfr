@@ -1,6 +1,6 @@
-/* mpfr_div_{ui,si} -- divide a floating-point number by a machine integer
+/* mpfr_div_ui -- divide a floating-point number by a machine integer
 
-Copyright 1999-2018 Free Software Foundation, Inc.
+Copyright 1999-2023 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -17,30 +17,38 @@ License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
+https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
 #define MPFR_NEED_LONGLONG_H
 #include "mpfr-impl.h"
 
+#ifdef MPFR_COV_CHECK
+int __gmpfr_cov_div_ui_sb[10][2] = { 0 };
+#endif
+
 /* returns 0 if result exact, non-zero otherwise */
-int
+#undef mpfr_div_ui
+MPFR_HOT_FUNCTION_ATTR int
 mpfr_div_ui (mpfr_ptr y, mpfr_srcptr x, unsigned long int u,
              mpfr_rnd_t rnd_mode)
 {
+  int inexact;
+
+#ifdef MPFR_LONG_WITHIN_LIMB
+
   int sh;
   mp_size_t i, xn, yn, dif;
   mp_limb_t *xp, *yp, *tmp, c, d;
   mpfr_exp_t exp;
-  int inexact;
   mp_limb_t rb; /* round bit */
   mp_limb_t sb; /* sticky bit */
   MPFR_TMP_DECL(marker);
 
   MPFR_LOG_FUNC
-    (("x[%Pu]=%.*Rg u=%lu rnd=%d",
+    (("x[%Pd]=%.*Rg u=%lu rnd=%d",
       mpfr_get_prec(x), mpfr_log_prec, x, u, rnd_mode),
-     ("y[%Pu]=%.*Rg inexact=%d",
+     ("y[%Pd]=%.*Rg inexact=%d",
       mpfr_get_prec(y), mpfr_log_prec, y, inexact));
 
   if (MPFR_UNLIKELY (MPFR_IS_SINGULAR (x)))
@@ -79,7 +87,7 @@ mpfr_div_ui (mpfr_ptr y, mpfr_srcptr x, unsigned long int u,
           /* x/0 is Inf since x != 0 */
           MPFR_SET_INF (y);
           MPFR_SET_SAME_SIGN (y, x);
-          mpfr_set_divby0 ();
+          MPFR_SET_DIVBY0 ();
           MPFR_RET (0);
         }
       else /* y = x/1 = x */
@@ -108,7 +116,6 @@ mpfr_div_ui (mpfr_ptr y, mpfr_srcptr x, unsigned long int u,
      from p[0] to p[n-1]. Let B = 2^GMP_NUMB_BITS.
      One has: 0 <= {p, n} < B^n. */
 
-  MPFR_ASSERTN (u == (mp_limb_t) u);
   if (dif >= 0)
     {
       c = mpn_divrem_1 (tmp, dif, xp, xn, u); /* used all the dividend */
@@ -160,6 +167,7 @@ mpfr_div_ui (mpfr_ptr y, mpfr_srcptr x, unsigned long int u,
               rb = 1;
               /* The sticky bit is 1 unless 2c-u = 0 and r = 0. */
               sb |= 2 * c - u;
+              MPFR_COV_SET (div_ui_sb[0][!!sb]);
             }
           else /* 2*c < u */
             {
@@ -173,9 +181,15 @@ mpfr_div_ui (mpfr_ptr y, mpfr_srcptr x, unsigned long int u,
                   for (i = 0; sb == 0 && i < -dif-1; i++)
                     if (xp[i])
                       sb = 1;
+                  /* The dif < -1 case with sb = 0, i.e. [2][0], will
+                     ensure that the body of the loop is covered. */
+                  MPFR_COV_SET (div_ui_sb[1 + (dif < -1)][!!sb]);
                 }
               else
-                sb |= c;
+                {
+                  sb |= c;
+                  MPFR_COV_SET (div_ui_sb[3][!!sb]);
+                }
             }
         }
       else
@@ -183,6 +197,7 @@ mpfr_div_ui (mpfr_ptr y, mpfr_srcptr x, unsigned long int u,
           /* round bit is in tmp[0] */
           rb = tmp[0] & (MPFR_LIMB_ONE << (sh - 1));
           sb |= (tmp[0] & MPFR_LIMB_MASK(sh - 1)) | c;
+          MPFR_COV_SET (div_ui_sb[4+!!rb][!!sb]);
         }
     }
   else  /* tmp[yn] != 0 */
@@ -206,11 +221,13 @@ mpfr_div_ui (mpfr_ptr y, mpfr_srcptr x, unsigned long int u,
         {
           rb = w & MPFR_LIMB_HIGHBIT;
           sb |= (w - rb) | c;
+          MPFR_COV_SET (div_ui_sb[6+!!rb][!!sb]);
         }
       else
         {
           rb = yp[0] & (MPFR_LIMB_ONE << (sh - 1));
           sb |= (yp[0] & MPFR_LIMB_MASK(sh - 1)) | w | c;
+          MPFR_COV_SET (div_ui_sb[8+!!rb][!!sb]);
         }
 
       exp -= shlz;
@@ -231,10 +248,11 @@ mpfr_div_ui (mpfr_ptr y, mpfr_srcptr x, unsigned long int u,
     {
       int nexttoinf;
 
-      MPFR_UPDATE2_RND_MODE(rnd_mode, MPFR_SIGN (y));
+      MPFR_UPDATE2_RND_MODE (rnd_mode, MPFR_SIGN (y));
       switch (rnd_mode)
         {
         case MPFR_RNDZ:
+        case MPFR_RNDF:
           inexact = - MPFR_INT_SIGN (y);  /* result is inexact */
           nexttoinf = 0;
           break;
@@ -281,28 +299,18 @@ mpfr_div_ui (mpfr_ptr y, mpfr_srcptr x, unsigned long int u,
 
   /* Set the exponent. Warning! One may still have an underflow. */
   MPFR_EXP (y) = exp;
+#else /* MPFR_LONG_WITHIN_LIMB */
+  mpfr_t uu;
+  MPFR_SAVE_EXPO_DECL (expo);
+
+  MPFR_SAVE_EXPO_MARK (expo);
+  mpfr_init2 (uu, sizeof (unsigned long) * CHAR_BIT);
+  mpfr_set_ui (uu, u, MPFR_RNDZ);
+  inexact = mpfr_div (y, x, uu, rnd_mode);
+  mpfr_clear (uu);
+  MPFR_SAVE_EXPO_UPDATE_FLAGS (expo, __gmpfr_flags);
+  MPFR_SAVE_EXPO_FREE (expo);
+#endif
 
   return mpfr_check_range (y, inexact, rnd_mode);
-}
-
-int
-mpfr_div_si (mpfr_ptr y, mpfr_srcptr x, long int u, mpfr_rnd_t rnd_mode)
-{
-  int res;
-
-  MPFR_LOG_FUNC
-    (("x[%Pu]=%.*Rg u=%ld rnd=%d",
-      mpfr_get_prec(x), mpfr_log_prec, x, u, rnd_mode),
-     ("y[%Pu]=%.*Rg inexact=%d",
-      mpfr_get_prec(y), mpfr_log_prec, y, res));
-
-  if (u >= 0)
-    res = mpfr_div_ui (y, x, u, rnd_mode);
-  else
-    {
-      res = - mpfr_div_ui (y, x, - (unsigned long) u,
-                           MPFR_INVERT_RND (rnd_mode));
-      MPFR_CHANGE_SIGN (y);
-    }
-  return res;
 }

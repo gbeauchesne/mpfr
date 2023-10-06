@@ -1,7 +1,7 @@
 /* mpfr_get_z -- get a multiple-precision integer from
                  a floating-point number
 
-Copyright 2004, 2006-2018 Free Software Foundation, Inc.
+Copyright 2004, 2006-2023 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -18,7 +18,7 @@ License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
+https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
 #include "mpfr-impl.h"
@@ -34,7 +34,7 @@ mpfr_get_z (mpz_ptr z, mpfr_srcptr f, mpfr_rnd_t rnd)
   if (MPFR_UNLIKELY (MPFR_IS_SINGULAR (f)))
     {
       if (MPFR_UNLIKELY (MPFR_NOTZERO (f)))
-        MPFR_SET_ERANGE ();
+        MPFR_SET_ERANGEFLAG ();
       mpz_set_ui (z, 0);
       /* The ternary value is 0 even for infinity. Giving the rounding
          direction in this case would not make much sense anyway, and

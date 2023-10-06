@@ -1,6 +1,6 @@
 /* Test file for mpfr_rec_sqrt.
 
-Copyright 2008-2018 Free Software Foundation, Inc.
+Copyright 2008-2023 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -17,15 +17,11 @@ License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
+https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
-#include <stdio.h>
-#include <stdlib.h>
-
+#include <time.h>
 #include "mpfr-test.h"
-
-#if MPFR_VERSION >= MPFR_VERSION_NUM(2,4,0)
 
 #define TEST_FUNCTION mpfr_rec_sqrt
 #define TEST_RANDOM_POS 8 /* 8/512 = 1/64 of the tested numbers are negative */
@@ -134,45 +130,45 @@ bad_case2 (void)
         mpfr_init2 (u, pu);
 
         mpfr_set_ui (u, 1, MPFR_RNDN);
-        for (rnd = 0; rnd < MPFR_RND_MAX; rnd++)
+        RND_LOOP (rnd)
           mpfr_rec_sqrt (r, u, (mpfr_rnd_t) rnd);
 
         mpfr_nextbelow (u);
-        for (rnd = 0; rnd < MPFR_RND_MAX; rnd++)
+        RND_LOOP (rnd)
           mpfr_rec_sqrt (r, u, (mpfr_rnd_t) rnd);
 
         mpfr_nextbelow (u);
-        for (rnd = 0; rnd < MPFR_RND_MAX; rnd++)
+        RND_LOOP (rnd)
           mpfr_rec_sqrt (r, u, (mpfr_rnd_t) rnd);
 
         mpfr_set_ui (u, 1, MPFR_RNDN);
         mpfr_nextabove (u);
-        for (rnd = 0; rnd < MPFR_RND_MAX; rnd++)
+        RND_LOOP (rnd)
           mpfr_rec_sqrt (r, u, (mpfr_rnd_t) rnd);
 
         mpfr_nextabove (u);
-        for (rnd = 0; rnd < MPFR_RND_MAX; rnd++)
+        RND_LOOP (rnd)
           mpfr_rec_sqrt (r, u, (mpfr_rnd_t) rnd);
 
         mpfr_set_ui (u, 2, MPFR_RNDN);
-        for (rnd = 0; rnd < MPFR_RND_MAX; rnd++)
+        RND_LOOP (rnd)
           mpfr_rec_sqrt (r, u, (mpfr_rnd_t) rnd);
 
         mpfr_nextbelow (u);
-        for (rnd = 0; rnd < MPFR_RND_MAX; rnd++)
+        RND_LOOP (rnd)
           mpfr_rec_sqrt (r, u, (mpfr_rnd_t) rnd);
 
         mpfr_nextbelow (u);
-        for (rnd = 0; rnd < MPFR_RND_MAX; rnd++)
+        RND_LOOP (rnd)
           mpfr_rec_sqrt (r, u, (mpfr_rnd_t) rnd);
 
         mpfr_set_ui (u, 2, MPFR_RNDN);
         mpfr_nextabove (u);
-        for (rnd = 0; rnd < MPFR_RND_MAX; rnd++)
+        RND_LOOP (rnd)
           mpfr_rec_sqrt (r, u, (mpfr_rnd_t) rnd);
 
         mpfr_nextabove (u);
-        for (rnd = 0; rnd < MPFR_RND_MAX; rnd++)
+        RND_LOOP (rnd)
           mpfr_rec_sqrt (r, u, (mpfr_rnd_t) rnd);
 
         mpfr_clear (r);
@@ -180,31 +176,109 @@ bad_case2 (void)
       }
 }
 
+/* Before commits 270f4df6b3a49caae1cf564dcdc1c55b1c5989eb (master) and
+   934dd8842b4bdeb919a73123203bc8ce56db38d1 (4.2 branch) on 2023-04-17,
+   this was giving a stack overflow in mpfr_rec_sqrt due to a Ziv loop
+   where the working precision was increased additively instead of the
+   standard Ziv loop using the MPFR_ZIV_* macros.
+*/
+static void
+bad_case3 (void)
+{
+  mpfr_t x, y;
+  int inex;
+
+  mpfr_init2 (x, 123456);
+  mpfr_init2 (y, 4);
+  mpfr_set_ui (y, 9, MPFR_RNDN);
+  mpfr_ui_div (x, 1, y, MPFR_RNDN);
+  inex = mpfr_rec_sqrt (y, x, MPFR_RNDN);
+  /* Let's also check the result, though this is not the real purpose
+     of this test (a stack overflow just makes the program crash).
+     1/9 = 0.111000111000111000111000111000111000...E-3 and since the
+     precision 123456 is divisible by 6, x > 1/9. Thus 1/sqrt(x) < 3. */
+  if (mpfr_cmp_ui0 (y, 3) != 0 || inex <= 0)
+    {
+      printf ("Error in bad_case3: expected 3 with inex > 0, got ");
+      mpfr_out_str (stdout, 10, 0, y, MPFR_RNDN);
+      printf (" with inex=%d\n", inex);
+      exit (1);
+    }
+  mpfr_clear (x);
+  mpfr_clear (y);
+}
+
+/* timing test for n limbs (so that we can compare with GMP speed -s n) */
+static void
+test (unsigned long n)
+{
+  mpfr_prec_t p = n * GMP_NUMB_BITS;
+  mpfr_t x, y, z;
+  gmp_randstate_t state;
+  double t;
+
+  gmp_randinit_default (state);
+  mpfr_init2 (x, p);
+  mpfr_init2 (y, p);
+  mpfr_init2 (z, p);
+  mpfr_urandom (x, state, MPFR_RNDN);
+  mpfr_urandom (y, state, MPFR_RNDN);
+
+  /* multiplication */
+  t = clock ();
+  mpfr_mul (z, x, y, MPFR_RNDN);
+  t = clock () - t;
+  printf ("mpfr_mul:      %.3gs\n", t / (double) CLOCKS_PER_SEC);
+
+  /* squaring */
+  t = clock ();
+  mpfr_sqr (z, x, MPFR_RNDN);
+  t = clock () - t;
+  printf ("mpfr_sqr:      %.3gs\n", t / (double) CLOCKS_PER_SEC);
+
+  /* square root */
+  t = clock ();
+  mpfr_sqrt (z, x, MPFR_RNDN);
+  t = clock () - t;
+  printf ("mpfr_sqrt:     %.3gs\n", t / (double) CLOCKS_PER_SEC);
+
+  /* inverse square root */
+  t = clock ();
+  mpfr_rec_sqrt (z, x, MPFR_RNDN);
+  t = clock () - t;
+  printf ("mpfr_rec_sqrt: %.3gs\n", t / (double) CLOCKS_PER_SEC);
+
+  mpfr_clear (x);
+  mpfr_clear (y);
+  mpfr_clear (z);
+  gmp_randclear (state);
+}
+
 int
-main (void)
+main (int argc, char *argv[])
 {
   tests_start_mpfr ();
+
+  if (argc == 2) /* trec_sqrt n */
+    {
+      unsigned long n = strtoul (argv[1], NULL, 10);
+      test (n);
+      goto end;
+    }
 
   special ();
   bad_case1 ();
   bad_case2 ();
-  test_generic (2, 300, 15);
+  bad_case3 ();
+  test_generic (MPFR_PREC_MIN, 300, 15);
 
   data_check ("data/rec_sqrt", mpfr_rec_sqrt, "mpfr_rec_sqrt");
-  bad_cases (mpfr_rec_sqrt, pm2, "mpfr_rec_sqrt", 8, -256, 255, 4, 128,
+  bad_cases (mpfr_rec_sqrt, pm2, "mpfr_rec_sqrt", 0, -256, 255, 4, 128,
              800, 50);
+  bad_cases (mpfr_rec_sqrt, pm2, "mpfr_rec_sqrt", 0, -256, 255, 9999, 9999,
+             120000, 1);
 
+ end:
   tests_end_mpfr ();
   return 0;
 }
-
-#else  /* MPFR_VERSION */
-
-int
-main (void)
-{
-  printf ("Warning! Test disabled for this MPFR version.\n");
-  return 0;
-}
-
-#endif  /* MPFR_VERSION */

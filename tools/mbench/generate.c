@@ -1,5 +1,5 @@
 /*
-Copyright 2005-2009 Free Software Foundation, Inc.
+Copyright 2005-2022 Free Software Foundation, Inc.
 Contributed by Patrick Pelissier, INRIA.
 
 This file is part of the MPFR Library.
@@ -16,7 +16,7 @@ License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with the MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
+https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
 #include <stdio.h>
@@ -29,7 +29,7 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 #endif
 
 #define fp_t mpfr_t
-#define fp_set_fr(dest,src) mpfr_set (dest, src, GMP_RNDN)
+#define fp_set_fr(dest,src) mpfr_set (dest, src, MPFR_RNDN)
 
 #define MAX_PREC 10000
 #define BASE 16
@@ -44,7 +44,7 @@ void gnumb_read (const char *filename, fp_t *dest, int n)
   mpfr_init2 (x, MAX_PREC);
   for (i = 0 ; i < n ; i++)
     {
-      if (mpfr_inp_str (x, f, 16, GMP_RNDN) == 0)
+      if (mpfr_inp_str (x, f, 16, MPFR_RNDN) == 0)
 	{
 	  printf ("Error reading entry %d/%d\n", i, n);
 	  mpfr_clear (x);
@@ -75,8 +75,8 @@ void gnumb_generate (const char *filename, int n, unsigned long seed)
       mpfr_urandomb (x, state);
       if ((i & 2) == 0)
         mpfr_mul_2si (x, x, (rand()%(2*GMP_NUMB_BITS))-GMP_NUMB_BITS,
-                      GMP_RNDN);
-      mpfr_out_str (f, 16, 0, x, GMP_RNDN);
+                      MPFR_RNDN);
+      mpfr_out_str (f, 16, 0, x, MPFR_RNDN);
       fputc ('\n', f);
     }
 

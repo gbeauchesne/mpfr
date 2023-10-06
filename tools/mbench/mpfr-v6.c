@@ -1,5 +1,5 @@
 /*
-Copyright 2005-2009 Free Software Foundation, Inc.
+Copyright 2005-2022 Free Software Foundation, Inc.
 Contributed by Patrick Pelissier, INRIA.
 
 This file is part of the MPFR Library.
@@ -16,7 +16,7 @@ License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with the MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
+https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
 #include <stdlib.h>
@@ -58,20 +58,20 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 
 /*
  * List of all the tests to do.
- * Macro "Bench" is defined futhermore
+ * Macro "Bench" is defined furthermore
  */
 #define TEST_LIST1 \
   BENCH("MPFR::::::::::", ; ); \
-  BENCH("add", mpfr_add(a,b,c,GMP_RNDN)); \
-  BENCH("sub", mpfr_sub(a,b,c,GMP_RNDN)); \
-  BENCH("mul", mpfr_mul(a,b,c,GMP_RNDN)); \
-  BENCH("div", mpfr_div(a,b,c,GMP_RNDN)); \
-  BENCH("sqrt", mpfr_sqrt(a,b,GMP_RNDN)); \
+  BENCH("add", mpfr_add(a,b,c,MPFR_RNDN)); \
+  BENCH("sub", mpfr_sub(a,b,c,MPFR_RNDN)); \
+  BENCH("mul", mpfr_mul(a,b,c,MPFR_RNDN)); \
+  BENCH("div", mpfr_div(a,b,c,MPFR_RNDN)); \
+  BENCH("sqrt", mpfr_sqrt(a,b,MPFR_RNDN)); \
   BENCH("cmp", mpfr_cmp(b,c)); \
   BENCH("sgn", (mpfr_sgn)(b)); \
-  BENCH("set", mpfr_set(a,b, GMP_RNDN)); \
-  BENCH("set0", mpfr_set_si(a,0,GMP_RNDN)); \
-  BENCH("set1", mpfr_set_si(a,1,GMP_RNDN)); \
+  BENCH("set", mpfr_set(a,b, MPFR_RNDN)); \
+  BENCH("set0", mpfr_set_si(a,0,MPFR_RNDN)); \
+  BENCH("set1", mpfr_set_si(a,1,MPFR_RNDN)); \
   BENCH("swap", mpfr_swap(b,c)); \
   BENCH("MPF:::::::::::", ; ); \
   BENCH("add", mpf_add(x,y,z)); \
@@ -87,23 +87,23 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
   EXTRA_TEST_LIST
 
 #define TEST_LIST2 \
-  BENCH("mpfr_exp", mpfr_exp(a,b,GMP_RNDN)); \
-  BENCH("mpfr_log", mpfr_log(a,b,GMP_RNDN)); \
-  BENCH("mpfr_sin", mpfr_sin(a,b,GMP_RNDN)); \
-  BENCH("mpfr_cos", mpfr_cos(a,b,GMP_RNDN)); \
-  BENCH("mpfr_tan", mpfr_tan(a,b,GMP_RNDN)); \
-  BENCH("mpfr_asin", mpfr_asin(a,b,GMP_RNDN)); \
-  BENCH("mpfr_acos", mpfr_acos(a,b,GMP_RNDN)); \
-  BENCH("mpfr_atan", mpfr_atan(a,b,GMP_RNDN)); \
-  BENCH("mpfr_agm", mpfr_agm(a,b,c,GMP_RNDN)); \
-  BENCH("mpfr_const_log2", (mpfr_const_log2) (a, GMP_RNDN)); \
-  BENCH("mpfr_const_pi", (mpfr_const_pi)(a, GMP_RNDN)); \
-  BENCH("mpfr_sinh", mpfr_sinh(a,b,GMP_RNDN)); \
-  BENCH("mpfr_cosh", mpfr_cosh(a,b,GMP_RNDN)); \
-  BENCH("mpfr_tanh", mpfr_tanh(a,b,GMP_RNDN)); \
-  BENCH("mpfr_asinh", mpfr_asinh(a,b,GMP_RNDN)); \
-  BENCH("mpfr_acosh", mpfr_acosh(a,b,GMP_RNDN)); \
-  BENCH("mpfr_atanh", mpfr_atanh(a,b,GMP_RNDN)); \
+  BENCH("mpfr_exp", mpfr_exp(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_log", mpfr_log(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_sin", mpfr_sin(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_cos", mpfr_cos(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_tan", mpfr_tan(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_asin", mpfr_asin(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_acos", mpfr_acos(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_atan", mpfr_atan(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_agm", mpfr_agm(a,b,c,MPFR_RNDN)); \
+  BENCH("mpfr_const_log2", (mpfr_const_log2) (a, MPFR_RNDN)); \
+  BENCH("mpfr_const_pi", (mpfr_const_pi)(a, MPFR_RNDN)); \
+  BENCH("mpfr_sinh", mpfr_sinh(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_cosh", mpfr_cosh(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_tanh", mpfr_tanh(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_asinh", mpfr_asinh(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_acosh", mpfr_acosh(a,b,MPFR_RNDN)); \
+  BENCH("mpfr_atanh", mpfr_atanh(a,b,MPFR_RNDN)); \
   BENCH("exp", d1 = exp(d2)); \
   BENCH("log", d1 = log(d2)); \
   BENCH("sin", d1 = sin(d2)); \
@@ -111,15 +111,15 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
   BENCH("tan", d1 = tan(d2)); \
   BENCH("asin", d1 = asin(d2)); \
   BENCH("acos", d1 = acos(d2)); \
-  BENCH("atan", d1 = atan(d2)); 
+  BENCH("atan", d1 = atan(d2));
 
 #define TEST_LIST3 \
-  BENCH("mpfr_cos", mpfr_cos(a,b,GMP_RNDN)); 
+  BENCH("mpfr_cos", mpfr_cos(a,b,MPFR_RNDN));
 
 #define TEST_LIST4 \
-  BENCH("get_d", d1 = mpfr_get_d (b, GMP_RNDN)); \
-  BENCH("set_d", mpfr_set_d (b, d2, GMP_RNDN));  \
-  BENCH("mul_ui", mpfr_mul_si (b, b, 123, GMP_RNDN));
+  BENCH("get_d", d1 = mpfr_get_d (b, MPFR_RNDN)); \
+  BENCH("set_d", mpfr_set_d (b, d2, MPFR_RNDN));  \
+  BENCH("mul_ui", mpfr_mul_si (b, b, 123, MPFR_RNDN));
 
 #ifndef TEST_LIST
 # define TEST_LIST TEST_LIST2
@@ -169,7 +169,7 @@ void make_stats(const char *filename, int num, mpfr_prec_t prec, int select_op,
   /* INIT */
   mpf_init2 (x, prec);
   mpf_init2 (y, prec);
-  mpf_init2 (z, prec);  
+  mpf_init2 (z, prec);
   mpfr_init2 (a, prec);
   mpfr_init2 (b, prec);
   mpfr_init2 (c, prec);
@@ -191,10 +191,10 @@ void make_stats(const char *filename, int num, mpfr_prec_t prec, int select_op,
       printf("Pass %d...\n", j+1);
       for(i = 0 ; i < num ; i++)
 	{
-	  mpfr_set (b, tab[i+0], GMP_RNDN);
-	  mpfr_set (c, tab[i+1], GMP_RNDN);
-	  mpf_set_fr (y, b, GMP_RNDN);
-	  mpf_set_fr (z, c, GMP_RNDN);
+	  mpfr_set (b, tab[i+0], MPFR_RNDN);
+	  mpfr_set (c, tab[i+1], MPFR_RNDN);
+	  mpf_set_fr (y, b, MPFR_RNDN);
+	  mpf_set_fr (z, c, MPFR_RNDN);
 	  SCS(( scs_set_mpfr(sc2, b), scs_set_mpfr(sc3, c) ));
 	  d1 = d2 = mpfr_get_d1 (b);
 	  d3 = mpfr_get_d1 (c);
@@ -227,7 +227,7 @@ void make_stats(const char *filename, int num, mpfr_prec_t prec, int select_op,
 
   if (verbose && select_op != 0) {
     for (i = 0 ; i < num ; i++) {
-      printf ("Tab[%02d]=", i); mpfr_out_str (stdout, 2, 10, tab[i], GMP_RNDN);
+      printf ("Tab[%02d]=", i); mpfr_out_str (stdout, 2, 10, tab[i], MPFR_RNDN);
       printf ("\tt=%Lu\n", mc[i][select_op]);
     }
   }
@@ -257,7 +257,7 @@ void make_stats(const char *filename, int num, mpfr_prec_t prec, int select_op,
       max -= min-1; op = 0;
       TEST_LIST;
 
-      // Output data 
+      // Output data
       sprintf(filename, "%s.data", outputname);
       out = fopen(filename, "w");
       if (out == NULL)
@@ -277,7 +277,7 @@ void make_stats(const char *filename, int num, mpfr_prec_t prec, int select_op,
 	  fprintf(out, "\n");
 	}
       fclose (out);
-      
+
       // Output GNUPLOT Info
       sprintf(filename, "%s.gnuplot", outputname);
       out = fopen(filename, "w");
@@ -289,7 +289,7 @@ void make_stats(const char *filename, int num, mpfr_prec_t prec, int select_op,
       fprintf (out, "set key left\n"
 	       "set data style linespoints\n"
 	       "plot ");
-      
+
       // "toto.data" using 1:2 title "mpfr_log",
       // "toto.data" using 1:3 title "mpfr_exp"
 #undef BENCH
@@ -315,7 +315,7 @@ void make_stats(const char *filename, int num, mpfr_prec_t prec, int select_op,
 int main(int argc, const char *argv[])
 {
   mpfr_prec_t prec;
-  unsigned long stat;  
+  unsigned long stat;
   int i, select_op = -1, smooth = 3, granularity = 10, op;
   const char *filename = "float.data";
   const char *output   = NULL;

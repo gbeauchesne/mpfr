@@ -1,6 +1,6 @@
 /* Test file for mpfr_div_ui.
 
-Copyright 1999-2018 Free Software Foundation, Inc.
+Copyright 1999-2023 Free Software Foundation, Inc.
 Contributed by the AriC and Caramba projects, INRIA.
 
 This file is part of the GNU MPFR Library.
@@ -17,11 +17,9 @@ License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with the GNU MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
+https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
-#include <stdio.h>
-#include <stdlib.h>
 #include <float.h>
 
 #include "mpfr-test.h"
@@ -97,6 +95,8 @@ special (void)
   mpfr_nextabove (x);
   mpfr_div_ui (y, x, 2, MPFR_RNDN); /* exactly in the middle */
   MPFR_ASSERTN(mpfr_cmp_ui (y, 2) == 0);
+  (mpfr_div_ui) (y, x, 2, MPFR_RNDN); /* exactly in the middle */
+  MPFR_ASSERTN(mpfr_cmp_ui (y, 2) == 0);
 
   mpfr_set_prec (x, 3 * mp_bits_per_limb);
   mpfr_set_prec (y, 2);
@@ -104,12 +104,16 @@ special (void)
   mpfr_nextabove (x);
   mpfr_div_ui (y, x, 2, MPFR_RNDN);
   MPFR_ASSERTN(mpfr_cmp_ui (y, 1) == 0);
+  (mpfr_div_ui) (y, x, 2, MPFR_RNDN);
+  MPFR_ASSERTN(mpfr_cmp_ui (y, 1) == 0);
 
   mpfr_set_prec (x, 3 * mp_bits_per_limb);
   mpfr_set_prec (y, 2);
   mpfr_set_si (x, -4, MPFR_RNDN);
   mpfr_nextbelow (x);
   mpfr_div_ui (y, x, 2, MPFR_RNDD);
+  MPFR_ASSERTN(mpfr_cmp_si (y, -3) == 0);
+  (mpfr_div_ui) (y, x, 2, MPFR_RNDD);
   MPFR_ASSERTN(mpfr_cmp_si (y, -3) == 0);
 
   for (xprec = 53; xprec <= 128; xprec++)
@@ -123,8 +127,8 @@ special (void)
           if (mpfr_cmp(x,y))
             {
               printf ("division by 1.0 fails for xprec=%u, yprec=%u\n", xprec, yprec);
-              printf ("expected "); mpfr_print_binary (x); puts ("");
-              printf ("got      "); mpfr_print_binary (y); puts ("");
+              printf ("expected "); mpfr_dump (x);
+              printf ("got      "); mpfr_dump (y);
               exit (1);
             }
         }
@@ -134,6 +138,8 @@ special (void)
   mpfr_set_si (x, 0, MPFR_RNDN);
   mpfr_set_si (y, -1, MPFR_RNDN);
   mpfr_div_ui (y, x, 4, MPFR_RNDN);
+  MPFR_ASSERTN(MPFR_IS_ZERO(y) && MPFR_IS_POS(y));
+  (mpfr_div_ui) (y, x, 4, MPFR_RNDN);
   MPFR_ASSERTN(MPFR_IS_ZERO(y) && MPFR_IS_POS(y));
 
   mpfr_clear (x);
@@ -166,14 +172,20 @@ check_inexact (void)
         {
           mpfr_set_prec (y, py);
           mpfr_set_prec (z, py + mp_bits_per_limb);
-          for (rnd = 0; rnd < MPFR_RND_MAX; rnd++)
+          /* The following test fails with MPFR_RNDF ("Wrong ternary value")
+             when building with CFLAGS="-Wall -Werror -std=c90 -pedantic
+             -Wno-error=overlength-strings -Wno-error=format" so that
+             MPFR_LONG_WITHIN_LIMB is not defined (the implementation
+             is not the same in this case). But the ternary value is not
+             specified for MPFR_RNDF. Thus use RND_LOOP_NO_RNDF. */
+          RND_LOOP_NO_RNDF (rnd)
             {
               inexact = mpfr_div_ui (y, x, u, (mpfr_rnd_t) rnd);
               if (mpfr_mul_ui (z, y, u, (mpfr_rnd_t) rnd))
                 {
                   printf ("z <- y * u should be exact for u=%lu\n", u);
-                  printf ("y="); mpfr_print_binary (y); puts ("");
-                  printf ("z="); mpfr_print_binary (z); puts ("");
+                  printf ("y="); mpfr_dump (y);
+                  printf ("z="); mpfr_dump (z);
                   exit (1);
                 }
               cmp = mpfr_cmp (z, x);
@@ -181,10 +193,10 @@ check_inexact (void)
                   ((inexact > 0) && (cmp <= 0)) ||
                   ((inexact < 0) && (cmp >= 0)))
                 {
-                  printf ("Wrong inexact flag for u=%lu, rnd=%s\n", u,
+                  printf ("Wrong ternary value for u=%lu, rnd=%s\n", u,
                           mpfr_print_rnd_mode ((mpfr_rnd_t) rnd));
-                  printf ("x="); mpfr_print_binary (x); puts ("");
-                  printf ("y="); mpfr_print_binary (y); puts ("");
+                  printf ("x="); mpfr_dump (x);
+                  printf ("y="); mpfr_dump (y);
                   exit (1);
                 }
             }
@@ -196,7 +208,12 @@ check_inexact (void)
   mpfr_clear (z);
 }
 
-#if GMP_NUMB_BITS == 64
+/* Note that the preprocessor test and the if test in the function are
+   complementary. If the size of an unsigned long is a power of 2 and
+   this type has no padding bits, the test on ULONG_MAX and the if test
+   are equivalent. The preprocessor test can avoid compiler warnings
+   about the large shifts. */
+#if GMP_NUMB_BITS == 64 && ULONG_MAX > 4294967295
 /* With r11140, on a 64-bit machine with GMP_CHECK_RANDOMIZE=1484406128:
    Consistency error for i = 2577
 */
@@ -205,7 +222,7 @@ test_20170105 (void)
 {
   mpfr_t x,z, t;
 
-  if (sizeof (unsigned long) * CHAR_BIT == 64)
+  if (sizeof (unsigned long) * CHAR_BIT >= 64)
     {
       mpfr_init2 (x, 138);
       mpfr_init2 (z, 128);
@@ -307,13 +324,14 @@ bug20180126 (void)
   /* This test expects that a limb fits in an unsigned long.
      One failing case from function bug20180126() in tdiv.c,
      for GMP_NUMB_BITS == 64. */
-  if (GMP_NUMB_BITS == 64 && MP_LIMB_T_MAX <= ULONG_MAX)
+#if ULONG_MAX > 4294967295
+  if (GMP_NUMB_BITS == 64 && MPFR_LIMB_MAX <= ULONG_MAX)
     {
       mpfr_init2 (x, 133);
       mpfr_init2 (y, 64);
       mpfr_set_ui (x, 1, MPFR_RNDN);
       mpfr_nextbelow (x); /* 1 - 2^(-133) = (2^133-1)/2^133 */
-      u = MP_LIMB_T_MAX;  /* 2^64 - 1 */
+      u = MPFR_LIMB_MAX;  /* 2^64 - 1 */
       inex = mpfr_div_ui (y, x, u, MPFR_RNDN);
       /* 2^133*x/u = (2^133-1)/(2^64-1) = (2^64+1)*2^5 + 31/(2^64-1)
          and should be rounded to 2^69+2^6, thus x/u should be rounded
@@ -339,6 +357,7 @@ bug20180126 (void)
       mpfr_clear (y);
       mpfr_clear (z);
     }
+#endif
 }
 
 /* check corner cases where the round bit is located in the upper bit of r */
@@ -349,7 +368,7 @@ corner_cases (int n)
   unsigned long u, v;
   int i, xn;
 
-  if (MP_LIMB_T_MAX <= ULONG_MAX)
+  if (MPFR_LIMB_MAX <= ULONG_MAX)
     {
       /* We need xn > yn + 1, thus we take xn = 3 and yn = 1.
          Also take xn = 4 to 6 to cover more code. */
@@ -360,7 +379,9 @@ corner_cases (int n)
           mpfr_init2 (t, 2 * GMP_NUMB_BITS);
           for (i = 0; i < n; i++)
             {
-              u = randlimb ();
+              do
+                u = randlimb ();
+              while (u == 0);
               do
                 v = randlimb ();
               while (v <= MPFR_LIMB_HIGHBIT);
@@ -369,17 +390,17 @@ corner_cases (int n)
               /* t = v-1/2 */
               mpfr_mul_ui (x, t, u, MPFR_RNDN);
 
-              /* when x = (v-1/2)*u, x/u should give v-1/2, which should give
-                 either v (if v is even) or v-1 (if v is odd) */
+              /* when x = (v-1/2)*u, x/u should give v-1/2, which should
+                 round to either v (if v is even) or v-1 (if v is odd) */
               mpfr_div_ui (y, x, u, MPFR_RNDN);
               MPFR_ASSERTN(mpfr_cmp_ui (y, v - (v & 1)) == 0);
 
-              /* when x = (v-1/2)*u - epsilon, x/u should give v-1 */
+              /* when x = (v-1/2)*u - epsilon, x/u should round to v-1 */
               mpfr_nextbelow (x);
               mpfr_div_ui (y, x, u, MPFR_RNDN);
               MPFR_ASSERTN(mpfr_cmp_ui (y, v - 1) == 0);
 
-              /* when x = (v-1/2)*u + epsilon, x/u should give v */
+              /* when x = (v-1/2)*u + epsilon, x/u should round to v */
               mpfr_nextabove (x);
               mpfr_nextabove (x);
               mpfr_div_ui (y, x, u, MPFR_RNDN);
@@ -438,7 +459,7 @@ midpoint_exact (void)
                   if (py < MPFR_PREC_MIN)
                     break;
                   mpfr_inits2 (py, y1, y2, (mpfr_ptr) 0);
-                  RND_LOOP (r)
+                  RND_LOOP_NO_RNDF (r)
                     {
                       inex1 = mpfr_set_ui (y1, i, (mpfr_rnd_t) r);
                       inex2 = mpfr_div_ui (y2, x, j, (mpfr_rnd_t) r);
@@ -463,6 +484,31 @@ midpoint_exact (void)
           mpfr_clear (x);
         }
     }
+}
+
+static void
+check_coverage (void)
+{
+#ifdef MPFR_COV_CHECK
+  int i, j;
+  int err = 0;
+
+  if (MPFR_LIMB_MAX <= ULONG_MAX)
+    {
+      for (i = 0; i < numberof (__gmpfr_cov_div_ui_sb); i++)
+        for (j = 0; j < 2; j++)
+          if (!__gmpfr_cov_div_ui_sb[i][j])
+            {
+              printf ("mpfr_div_ui not tested on case %d, sb=%d\n", i, j);
+              err = 1;
+            }
+
+      if (err)
+        exit (1);
+    }
+  else /* e.g. mips64 with the n32 ABI */
+    printf ("Warning! Value coverage disabled (mp_limb_t > unsigned long).\n");
+#endif
 }
 
 #define TEST_FUNCTION mpfr_div_ui
@@ -491,7 +537,7 @@ main (int argc, char **argv)
   check("1.0", 3, MPFR_RNDD, "3.3333333333333331483e-1");
   check("1.0", 2116118, MPFR_RNDN, "4.7256343927890600483e-7");
   check("1.098612288668109782", 5, MPFR_RNDN, "0.21972245773362195087");
-#if GMP_NUMB_BITS == 64
+#if GMP_NUMB_BITS == 64 && ULONG_MAX > 4294967295
   test_20170105 ();
 #endif
 
@@ -506,9 +552,10 @@ main (int argc, char **argv)
     }
   mpfr_clear (x);
 
-  test_generic (2, 200, 100);
+  test_generic (MPFR_PREC_MIN, 200, 100);
   midpoint_exact ();
 
+  check_coverage ();
   tests_end_mpfr ();
   return 0;
 }

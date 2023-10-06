@@ -1,5 +1,5 @@
 /*
-Copyright 2005-2009 Free Software Foundation, Inc.
+Copyright 2005-2022 Free Software Foundation, Inc.
 Contributed by Patrick Pelissier, INRIA.
 
 This file is part of the MPFR Library.
@@ -16,7 +16,7 @@ License for more details.
 
 You should have received a copy of the GNU Lesser General Public License
 along with the MPFR Library; see the file COPYING.LESSER.  If not, see
-http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
+https://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA. */
 
 #include <stdlib.h>
@@ -45,20 +45,20 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 
 /*
  * List of all the tests to do.
- * Macro "Bench" is defined futhermore
+ * Macro "Bench" is defined furthermore
  */
 #define TEST_LIST \
   BENCH("MPFR::::::::::", ; ); \
-  BENCH("add", mpfr_add(a,b,c,GMP_RNDN)); \
-  BENCH("sub", mpfr_sub(a,b,c,GMP_RNDN)); \
-  BENCH("mul", mpfr_mul(a,b,c,GMP_RNDN)); \
-  BENCH("div", mpfr_div(a,b,c,GMP_RNDN)); \
-  BENCH("sqrt", mpfr_sqrt(a,b,GMP_RNDN)); \
+  BENCH("add", mpfr_add(a,b,c,MPFR_RNDN)); \
+  BENCH("sub", mpfr_sub(a,b,c,MPFR_RNDN)); \
+  BENCH("mul", mpfr_mul(a,b,c,MPFR_RNDN)); \
+  BENCH("div", mpfr_div(a,b,c,MPFR_RNDN)); \
+  BENCH("sqrt", mpfr_sqrt(a,b,MPFR_RNDN)); \
   BENCH("cmp", mpfr_cmp(b,c)); \
-  BENCH("set", mpfr_set(a,b, GMP_RNDN)); \
-  BENCH("set0", mpfr_set_ui(a,0,GMP_RNDN)); \
-  BENCH("set1", mpfr_set_ui(a,1,GMP_RNDN)); \
-  BENCH("setz", mpfr_set_z(a,zz,GMP_RNDN)); \
+  BENCH("set", mpfr_set(a,b, MPFR_RNDN)); \
+  BENCH("set0", mpfr_set_ui(a,0,MPFR_RNDN)); \
+  BENCH("set1", mpfr_set_ui(a,1,MPFR_RNDN)); \
+  BENCH("setz", mpfr_set_z(a,zz,MPFR_RNDN)); \
   BENCH("swap", mpfr_swap(b,c)); \
   BENCH("MPF:::::::::::", ; ); \
   BENCH("add", mpf_add(x,y,z)); \
@@ -70,7 +70,7 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
   BENCH("set", mpf_set(x,y)); \
   BENCH("set0", mpf_set_ui(x,0)); \
   BENCH("set1", mpf_set_ui(x,1)); \
-  BENCH("swap", mpf_swap(y,z)); 
+  BENCH("swap", mpf_swap(y,z));
 
 
 #define USAGE                                                                \
@@ -81,7 +81,7 @@ http://www.gnu.org/licenses/ or write to the Free Software Foundation, Inc.,
 
 int verbose = 0;
 
-void mpfr_bench(mpfr_prec_t prec_a, mpfr_prec_t prec_b, mpfr_prec_t prec_c, 
+void mpfr_bench(mpfr_prec_t prec_a, mpfr_prec_t prec_b, mpfr_prec_t prec_c,
 		const char *b_str, const char *c_str, unsigned long seed)
 {
   mpfr_t a,b,c;
@@ -108,15 +108,15 @@ void mpfr_bench(mpfr_prec_t prec_a, mpfr_prec_t prec_b, mpfr_prec_t prec_c,
     mpf_set_str(z, c_str, 10);
   else
     mpf_urandomb(z, state, prec_c);
-  mpfr_set_f(b, y, GMP_RNDN);
-  mpfr_set_f(c, z, GMP_RNDN);
+  mpfr_set_f(b, y, MPFR_RNDN);
+  mpfr_set_f(c, z, MPFR_RNDN);
   mpz_init (zz);
   mpz_urandomb (zz, state, 2*prec_b);
 
   if (verbose)
     {
-      printf("B="); mpfr_out_str(stdout, 10, 0, b, GMP_RNDD);
-      printf("\nC="); mpfr_out_str(stdout, 10, 0, c, GMP_RNDD);
+      printf("B="); mpfr_out_str(stdout, 10, 0, b, MPFR_RNDD);
+      printf("\nC="); mpfr_out_str(stdout, 10, 0, c, MPFR_RNDD);
       putchar('\n');
     }
   TIMP_OVERHEAD ();
@@ -135,7 +135,7 @@ void mpfr_bench(mpfr_prec_t prec_a, mpfr_prec_t prec_b, mpfr_prec_t prec_c,
 }
 
 #define MAX_OP 40
-void mpfr_stats (unsigned long num, mpfr_prec_t prec_a, mpfr_prec_t prec_b, 
+void mpfr_stats (unsigned long num, mpfr_prec_t prec_a, mpfr_prec_t prec_b,
 		 mpfr_prec_t prec_c, unsigned long seed)
 {
   mpf_t xt[num],yt[num],zt[num];
@@ -169,7 +169,7 @@ void mpfr_stats (unsigned long num, mpfr_prec_t prec_a, mpfr_prec_t prec_b,
       mpf_init2(xt[i],  prec_a);
       mpf_init2(yt[i],  prec_b);
       mpf_init2(zt[i],  prec_c);
-      mpf_urandomb(yt[i], state, prec_b); 
+      mpf_urandomb(yt[i], state, prec_b);
       yt[i][0]._mp_exp += (rand() % prec_b) / GMP_NUMB_BITS;
       mpf_urandomb(zt[i], state, prec_c);
       /* zt[i][0]._mp_exp += (rand() % prec_c) / GMP_NUMB_BITS; */
@@ -185,8 +185,8 @@ void mpfr_stats (unsigned long num, mpfr_prec_t prec_a, mpfr_prec_t prec_b,
 	  op = 0;
 	  mpf_set(y,yt[i]);
 	  mpf_set(z,zt[i]);
-	  mpfr_set_f(b, yt[i], GMP_RNDN);
-	  mpfr_set_f(c, zt[i], GMP_RNDN);
+	  mpfr_set_f(b, yt[i], MPFR_RNDN);
+	  mpfr_set_f(c, zt[i], MPFR_RNDN);
 #undef BENCH
 #define BENCH(TEST_STR, TEST)                                           \
  m = TIMP_MEASURE(TEST); if (m < mc[i][op]) {mc[i][op] = m; cont = 4;} op++;
